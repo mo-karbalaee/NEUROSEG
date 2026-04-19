@@ -1,4 +1,5 @@
 import tifffile as tiff
+import matplotlib.pyplot as plt
 
 def load_and_inspect(path):
     data = tiff.imread(path)
@@ -12,3 +13,19 @@ def load_and_inspect(path):
 
 
 data = load_and_inspect("../data/6s.tif")
+
+def play(data, step=1):
+    plt.figure()
+
+    for t in range(0, data.shape[0], step):
+        plt.imshow(data[t], cmap="gray")
+        plt.title(f"t = {t}")
+        plt.axis("off")
+
+        plt.pause(0.05)
+        plt.clf()
+
+    plt.close()
+
+
+play(data)
