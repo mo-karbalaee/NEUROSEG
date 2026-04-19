@@ -3,6 +3,7 @@ name = "neuroseg"
 version = "0.1.0"
 requires-python = ">=3.10.0"
 dependencies = [
+    "ipykernel>=7.2.0",
     "matplotlib>=3.10.8",
     "numpy>=2.2.6",
     "opencv-python>=4.13.0.92",
