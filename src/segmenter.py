@@ -10,5 +10,5 @@ class Segmenter:
     @staticmethod
     def generate_mask(recording: CalciumRecording):
         model = models.CellposeModel()
-        masks, flows, styles = model.eval(recording.data[0], diameter=None)
+        masks, flows, styles = model.eval(recording.data, diameter=None)
         return masks, flows

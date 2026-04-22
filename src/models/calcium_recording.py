@@ -32,21 +32,16 @@ class CalciumRecording:
 
         return data
 
-    def visualize_one_frame(self, masks: np.ndarray, flows: np.ndarray):
-        fig = plt.figure(figsize=(6, 6))
+    def visualize(self, masks: np.ndarray, flows: np.ndarray):
+        fig = plt.figure(figsize=(10, 10))
 
-        fig.clear()
+        T = self.data.shape[0]
 
-        plot.show_segmentation(
-
-            fig,
-
-            self.data[0],
-
-            masks,
-
-            flows[0][0]
-
-        )
-
+        for t in range(T):
+            plot.show_segmentation(
+                fig,
+                self.data[t],
+                masks,
+                flows[t][0]
+            )
 
