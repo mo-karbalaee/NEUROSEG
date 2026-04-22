@@ -1,10 +1,12 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import tifffile as tiff
 import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import tifffile as tiff
+from cellpose import plot
+
 
 class CalciumRecording:
-    def __init__(self,path:str):
+    def __init__(self, path: str):
         self.data: np.ndarray = self._load(path)
         self.path = path
 
@@ -22,7 +24,7 @@ class CalciumRecording:
         cap.release()
         return np.array(frames)
 
-    def _load(self,path: str):
+    def _load(self, path: str):
         if "avi" in path:
             data = CalciumRecording._load_avi(path)
         else:
@@ -30,15 +32,21 @@ class CalciumRecording:
 
         return data
 
-    def visualize_raw(self):
-        plt.figure()
+    def visualize_one_frame(self, masks: np.ndarray, flows: np.ndarray):
+        fig = plt.figure(figsize=(6, 6))
 
-        for t in range(0, self.data.shape[0]):
-            plt.imshow(self.data[t], cmap="gray")
-            plt.title(f"t = {t}")
-            plt.axis("off")
+        fig.clear()
 
-            plt.pause(0.05)
-            plt.clf()
+        plot.show_segmentation(
 
-        plt.close()
+            fig,
+
+            self.data[0],
+
+            masks,
+
+            flows[0][0]
+
+        )
+
+

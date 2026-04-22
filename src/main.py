@@ -3,6 +3,6 @@ from src.segmenter import Segmenter
 
 recording: CalciumRecording = CalciumRecording(path="../data/6s.tif")
 
-# DataLoader.visualize(recording)
+masks, flows = Segmenter.generate_mask(recording)
 
-Segmenter.generate_mask(recording)
+recording.visualize(masks, flows)
