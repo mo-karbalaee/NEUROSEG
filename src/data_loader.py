@@ -1,14 +1,34 @@
-import tifffile as tiff
-from models.calcium_recording import CalciumRecording
 import matplotlib.pyplot as plt
+import numpy as np
+import tifffile as tiff
+import cv2
+from models.calcium_recording import CalciumRecording
 
 class DataLoader:
     def __init__(self):
         pass
 
     @staticmethod
+    def _load_avi(path: str):
+        cap = cv2.VideoCapture(path)
+
+        frames = []
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames.append(frame)
+
+        cap.release()
+        return np.array(frames)
+
+    @staticmethod
     def load(path: str):
-        data = tiff.imread(path)
+        if "avi" in path:
+            data = DataLoader._load_avi(path)
+        else:
+            data = tiff.imread(path)
+
         return CalciumRecording(data, path)
 
     @staticmethod
