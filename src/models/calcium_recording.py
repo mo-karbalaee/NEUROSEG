@@ -8,6 +8,7 @@ from cellpose import plot
 class CalciumRecording:
     def __init__(self, path: str):
         self.data: np.ndarray = self._load(path)
+        print(self.data.shape)
         self.path = path
 
     @staticmethod
@@ -33,15 +34,15 @@ class CalciumRecording:
         return data
 
     def visualize(self, masks: np.ndarray, flows: np.ndarray):
-        fig = plt.figure(figsize=(10, 10))
-
         T = self.data.shape[0]
 
         for t in range(T):
+            fig = plt.figure(figsize=(20, 20))
             plot.show_segmentation(
                 fig,
                 self.data[t],
-                masks,
-                flows[t][0]
+                masks[t],
+                flows[t]
             )
+            plt.show()
 
