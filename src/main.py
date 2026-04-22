@@ -1,6 +1,8 @@
-from src.data_loader import DataLoader
 from src.models.calcium_recording import CalciumRecording
+from src.segmenter import Segmenter
 
-recording: CalciumRecording = DataLoader.load("../data/Medien1.avi")
+recording: CalciumRecording = CalciumRecording(path="../data/6s.tif")
 
-DataLoader.visualize(recording)
+# DataLoader.visualize(recording)
+
+Segmenter.generate_mask(recording)
