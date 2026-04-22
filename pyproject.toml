@@ -7,5 +7,6 @@ dependencies = [
     "matplotlib>=3.10.8",
     "numpy>=2.2.6",
     "opencv-python>=4.13.0.92",
+    "pyqt6>=6.11.0",
     "tifffile>=2025.5.10",
 ]
