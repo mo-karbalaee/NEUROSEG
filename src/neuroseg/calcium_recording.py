@@ -9,7 +9,7 @@ from cellpose import plot
 class CalciumRecording:
     def __init__(self, path: str):
         self.data: np.ndarray = self._load(path)
-        print(self.data.shape)
+        print("Data dimensions: ", self.data.shape)
         self.path = path
         self.file_name = Path(path).name
 
@@ -33,6 +33,9 @@ class CalciumRecording:
             data = CalciumRecording._load_avi(path)
         else:
             data = tiff.imread(path)
+
+        if data.ndim == 2:
+            data = data[np.newaxis, ...]
 
         return data
 
