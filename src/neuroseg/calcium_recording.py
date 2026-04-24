@@ -63,7 +63,7 @@ class CalciumRecording:
         ax.set_xlim(0, T)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.legend(loc='upper right', fontsize=8, ncol=2)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), fontsize=8, ncol=5)
         plt.title("Neural Activity Traces")
         plt.tight_layout()
         plt.savefig("traces.png", dpi=150, bbox_inches='tight')

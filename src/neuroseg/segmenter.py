@@ -18,19 +18,28 @@ class Segmenter:
 
     @staticmethod
     def extract_traces(masks: list, recording: CalciumRecording) -> np.ndarray:
-        stacked = np.array(masks)
-        consensus_mask = stats.mode(stacked, axis=0).mode
-        N = int(np.max(consensus_mask))
         T = recording.data.shape[0]
+        all_counts = [np.max(m) for m in masks]
+        print(f"Neurons per frame: {all_counts}")
+
+        reference_idx = int(np.argmax(all_counts))
+        reference_mask = masks[reference_idx]
+        N = int(np.max(reference_mask))
+        print(f"Using frame {reference_idx} as reference with {N} neurons")
+
         traces = np.zeros((N, T))
 
         for t in range(T):
             for n in range(1, N + 1):
-                pixel_values = recording.data[t][consensus_mask == n]
+                pixel_values = recording.data[t][reference_mask == n]
                 if len(pixel_values) > 0:
-                    traces[n - 1, t] = pixel_values.mean()
+                    F = pixel_values.mean()
+                    traces[n - 1, t] = F
 
-        return traces
+        F0 = np.percentile(traces, 10, axis=1, keepdims=True)
+        dff = (traces - F0) / (F0 + 1e-6)
+
+        return dff
 
     @staticmethod
     def save_results(masks, flows, file_name):
