@@ -3,7 +3,6 @@ import pickle
 import numpy as np
 from cellpose import models
 from neuroseg.calcium_recording import CalciumRecording
-from scipy import stats
 
 class Segmenter:
     def __init__(self):
