@@ -37,13 +37,13 @@ class Segmenter:
         np.save(path, traces)
 
     @staticmethod
-    def save_results(self, masks, flows, file_name):
+    def save_results(masks, flows, file_name):
         np.save(f"masks+{file_name}.npy", masks)
         with open(f"flows+{file_name}.pkl", "wb") as f:
             pickle.dump(flows, f)
 
     @staticmethod
-    def load_results(self, file_name):
+    def load_results(file_name):
         masks = np.load(f"masks+{file_name}.npy", allow_pickle=True)
         with open(f"flows+{file_name}.pkl", "rb") as f:
             flows = pickle.load(f)
