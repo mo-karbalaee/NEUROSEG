@@ -1,8 +1,7 @@
+import os
 import pickle
-
 import numpy as np
 from cellpose import models
-
 from neuroseg.calcium_recording import CalciumRecording
 
 
@@ -33,18 +32,24 @@ class Segmenter:
         return traces
 
     @staticmethod
-    def save_traces(traces: np.ndarray, path: str):
-        np.save(path, traces)
-
-    @staticmethod
     def save_results(masks, flows, file_name):
-        np.save(f"masks+{file_name}.npy", masks)
-        with open(f"flows+{file_name}.pkl", "wb") as f:
+        save_dir = "output"
+        os.makedirs(save_dir, exist_ok=True)
+        np.save(os.path.join(save_dir, f"masks_{file_name}.npy"), masks)
+        with open(os.path.join(save_dir, f"flows_{file_name}.pkl"), "wb") as f:
             pickle.dump(flows, f)
 
     @staticmethod
     def load_results(file_name):
-        masks = np.load(f"masks+{file_name}.npy", allow_pickle=True)
-        with open(f"flows+{file_name}.pkl", "rb") as f:
+        save_dir = "output"
+        masks = np.load(os.path.join(save_dir, f"masks_{file_name}.npy"), allow_pickle=True)
+        with open(os.path.join(save_dir, f"flows_{file_name}.pkl"), "rb") as f:
             flows = pickle.load(f)
+
         return masks, flows
+
+    @staticmethod
+    def save_traces(traces: np.ndarray, file_name: str):
+        save_dir = "output"
+        os.makedirs(save_dir, exist_ok=True)
+        np.save(os.path.join(save_dir, f"traces_{file_name}.npy"), traces)

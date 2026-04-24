@@ -1,9 +1,10 @@
+from pathlib import Path
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import tifffile as tiff
 from cellpose import plot
-from pathlib import Path
-import numpy as np
+
 
 class CalciumRecording:
     def __init__(self, path: str):
@@ -26,7 +27,8 @@ class CalciumRecording:
         cap.release()
         return np.array(frames)
 
-    def _load(self, path: str):
+    @staticmethod
+    def _load(path: str):
         if "avi" in path:
             data = CalciumRecording._load_avi(path)
         else:
@@ -35,17 +37,11 @@ class CalciumRecording:
         return data
 
     def visualize(self, masks: np.ndarray, flows: np.ndarray):
-        from matplotlib.animation import FuncAnimation, FFMpegWriter
-
-        fig = plt.figure(figsize=(20, 20))
-
-        def update(t):
-            fig.clf()
+        fig = plt.figure(figsize=(8, 8))
+        for t in range(self.data.shape[0]):
+            plt.clf()
             plot.show_segmentation(fig, self.data[t], masks[t], flows[t][0])
+            plt.title(f"Frame {t}")
+            plt.pause(0.05)
 
-        ani = FuncAnimation(fig, update, frames=self.data.shape[0], interval=100)
-        writer = FFMpegWriter(fps=10)
-        ani.save(f"segmentation+{self.file_name}.mp4", writer=writer)
-        plt.close()
-        print(f"Saved to segmentation+{self.file_name}.mp4")
-
+        plt.show()
