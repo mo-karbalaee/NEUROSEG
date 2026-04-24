@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 from cellpose import models
 from neuroseg.calcium_recording import CalciumRecording
-
+from scipy import stats
 
 class Segmenter:
     def __init__(self):
@@ -18,14 +18,15 @@ class Segmenter:
 
     @staticmethod
     def extract_traces(masks: list, recording: CalciumRecording) -> np.ndarray:
-        reference_mask = masks[0]
-        N = int(np.max(reference_mask))
+        stacked = np.array(masks)
+        consensus_mask = stats.mode(stacked, axis=0).mode
+        N = int(np.max(consensus_mask))
         T = recording.data.shape[0]
         traces = np.zeros((N, T))
 
         for t in range(T):
             for n in range(1, N + 1):
-                pixel_values = recording.data[t][reference_mask == n]
+                pixel_values = recording.data[t][consensus_mask == n]
                 if len(pixel_values) > 0:
                     traces[n - 1, t] = pixel_values.mean()
 

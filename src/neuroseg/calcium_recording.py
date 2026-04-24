@@ -48,3 +48,23 @@ class CalciumRecording:
             plt.pause(0.05)
 
         plt.show()
+
+    @staticmethod
+    def visualize_traces(traces: np.ndarray):
+        N, T = traces.shape
+        fig, ax = plt.subplots(figsize=(15, 6))
+        colors = plt.cm.tab20(np.linspace(0, 1, N))
+
+        for n in range(N):
+            ax.plot(traces[n], linewidth=0.8, color=colors[n], label=f"Neuron {n + 1}")
+
+        ax.set_xlabel("Frame")
+        ax.set_ylabel("Fluorescence")
+        ax.set_xlim(0, T)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.legend(loc='upper right', fontsize=8, ncol=2)
+        plt.title("Neural Activity Traces")
+        plt.tight_layout()
+        plt.savefig("traces.png", dpi=150, bbox_inches='tight')
+        plt.show()
