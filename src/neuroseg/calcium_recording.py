@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tifffile as tiff
 from cellpose import plot
-
+import os
 
 class CalciumRecording:
     def __init__(self, path: str):
@@ -50,21 +50,20 @@ class CalciumRecording:
         plt.show()
 
     @staticmethod
-    def visualize_traces(traces: np.ndarray):
+    def visualize_traces(traces: np.ndarray, file_name: str):
         N, T = traces.shape
-        fig, ax = plt.subplots(figsize=(15, 6))
         colors = plt.cm.tab20(np.linspace(0, 1, N))
+        output_dir = f"../../output/{file_name}"
+        os.makedirs(output_dir, exist_ok=True)
 
         for n in range(N):
-            ax.plot(traces[n], linewidth=0.8, color=colors[n], label=f"Neuron {n + 1}")
-
-        ax.set_xlabel("Frame")
-        ax.set_ylabel("Fluorescence")
-        ax.set_xlim(0, T)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), fontsize=8, ncol=5)
-        plt.title("Neural Activity Traces")
-        plt.tight_layout()
-        plt.savefig("traces.png", dpi=150, bbox_inches='tight')
-        plt.show()
+            fig, ax = plt.subplots(figsize=(15, 4))
+            ax.plot(traces[n], linewidth=0.8, color=colors[n])
+            ax.set_xlabel("Frame")
+            ax.set_ylabel("ΔF/F₀")
+            ax.set_xlim(0, T)
+            ax.set_title(f"Neuron {n + 1}")
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            plt.tight_layout()
+            plt.savefig(f"{output_dir}/trace_neuron_{n + 1}.png", dpi=150, bbox_inches='tight')

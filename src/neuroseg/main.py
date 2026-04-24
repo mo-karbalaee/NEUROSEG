@@ -21,6 +21,6 @@ for file_path in file_paths:
     traces = Segmenter.extract_traces(masks, recording)
     Segmenter.save_traces(traces, recording.file_name)
     # recording.visualize(masks, flows)
-    recording.visualize_traces(traces)
+    recording.visualize_traces(traces, recording.file_name)
 
     print("Finished processing ", recording.file_name)
