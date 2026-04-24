@@ -20,12 +20,10 @@ class Segmenter:
     def extract_traces(masks: list, recording: CalciumRecording) -> np.ndarray:
         T = recording.data.shape[0]
         all_counts = [np.max(m) for m in masks]
-        print(f"Neurons per frame: {all_counts}")
 
         reference_idx = int(np.argmax(all_counts))
         reference_mask = masks[reference_idx]
         N = int(np.max(reference_mask))
-        print(f"Using frame {reference_idx} as reference with {N} neurons")
 
         traces = np.zeros((N, T))
 
