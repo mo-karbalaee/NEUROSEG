@@ -18,6 +18,7 @@ for file_path in file_paths:
         masks, flows = Segmenter.generate_mask(recording)
         Segmenter.save_results(masks, flows, recording.file_name)
 
+    Segmenter.save_traces(Segmenter.extract_traces(masks, recording), recording.file_name)
     recording.visualize(masks, flows)
 
     print("Finished processing ", recording.file_name)
