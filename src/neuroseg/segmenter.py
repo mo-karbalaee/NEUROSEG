@@ -41,7 +41,7 @@ class Segmenter:
 
     @staticmethod
     def save_results(masks, flows, file_name):
-        save_dir = "../../output"
+        save_dir = "output"
         os.makedirs(save_dir, exist_ok=True)
         np.save(os.path.join(save_dir, f"masks+{file_name}.npy"), masks)
         with open(os.path.join(save_dir, f"flows+{file_name}.pkl"), "wb") as f:
@@ -49,7 +49,7 @@ class Segmenter:
 
     @staticmethod
     def load_results(file_name):
-        save_dir = "../../output"
+        save_dir = "output"
         masks = np.load(os.path.join(save_dir, f"masks+{file_name}.npy"), allow_pickle=True)
         with open(os.path.join(save_dir, f"flows+{file_name}.pkl"), "rb") as f:
             flows = pickle.load(f)
@@ -58,6 +58,6 @@ class Segmenter:
 
     @staticmethod
     def save_traces(traces: np.ndarray, file_name: str):
-        save_dir = "../../output"
+        save_dir = "output"
         os.makedirs(save_dir, exist_ok=True)
         np.save(os.path.join(save_dir, f"traces+{file_name}.npy"), traces)

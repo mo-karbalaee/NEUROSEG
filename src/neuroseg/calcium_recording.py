@@ -53,7 +53,7 @@ class CalciumRecording:
     def save_individual_traces(traces: np.ndarray, file_name: str):
         N, T = traces.shape
         colors = plt.cm.tab20(np.linspace(0, 1, N))
-        output_dir = f"../../output/{file_name}"
+        output_dir = f"output/{file_name}"
         os.makedirs(output_dir, exist_ok=True)
 
         for n in range(N):
@@ -73,7 +73,7 @@ class CalciumRecording:
     def visualize_traces(traces: np.ndarray, file_name: str):
         N, T = traces.shape
         colors = plt.cm.tab20(np.linspace(0, 1, N))
-        output_dir = f"../../output/{file_name}"
+        output_dir = f"output/{file_name}"
         os.makedirs(output_dir, exist_ok=True)
 
         fig, ax = plt.subplots(figsize=(15, 6))
