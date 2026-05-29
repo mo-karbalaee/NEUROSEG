@@ -1,5 +1,7 @@
 # NEUROSEG
 
+<img src="icon.png" width=150/>
+
 This is a guide for running NEUROSEG locally. 
 
 ## Fetching Dependencies
