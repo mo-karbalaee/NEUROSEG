@@ -163,5 +163,5 @@ cython_debug/
 .idea/
 output/
 
-.DS_STORE
+.DS_Store
 
