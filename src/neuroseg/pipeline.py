@@ -1,4 +1,5 @@
 from pathlib import Path
+from langchain_core.runnables.graph import MermaidDrawMethod
 from langgraph.graph import StateGraph, START, END
 from neuroseg.models.state import State
 from neuroseg.models.node import Node
@@ -69,6 +70,6 @@ def run(data_dir: str | Path, mode: Mode = Mode.INFERENCE):
 
 def visualize_pipeline(output_path: str | Path = "docs/pipeline.png"):
     app = build_app()
-    png_bytes = app.get_graph().draw_mermaid_png()
+    png_bytes = app.get_graph().draw_mermaid_png(draw_method=MermaidDrawMethod.PYPPETEER)
     with open(output_path, "wb") as f:
         f.write(png_bytes)
