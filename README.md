@@ -17,7 +17,7 @@ uv sync
 In order to run NEUROSEG, you only need to run the following command:
 
 ```shell
-uv run -m neuroseg.main
+uv run -m neuroseg.pipeline
 ```
 
 Put the recordings that you want to process in the `data` folder.
