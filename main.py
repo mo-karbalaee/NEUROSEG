@@ -67,18 +67,18 @@ def _parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--zebrafish-data",
+        "--source-data",
         type=Path,
         default=None,
         metavar="DIR",
-        help="(H2) Zebrafish pretraining data directory.",
+        help="(H2) Source-organism data directory (pretraining). Organism is inferred from Neurofinder directory names.",
     )
     parser.add_argument(
-        "--drosophila-data",
+        "--target-data",
         type=Path,
         default=None,
         metavar="DIR",
-        help="(H2) Drosophila target data directory.",
+        help="(H2) Target-organism labeled data directory (fine-tuning). Organism is inferred from Neurofinder directory names.",
     )
     parser.add_argument(
         "--pretrained-ckpt",
@@ -121,10 +121,10 @@ def main():
         config["labeled_data_dir"] = str(args.labeled_data)
     if args.labeled_fractions is not None:
         config["labeled_fractions"] = args.labeled_fractions
-    if args.zebrafish_data is not None:
-        config["zebrafish_data_dir"] = str(args.zebrafish_data)
-    if args.drosophila_data is not None:
-        config["drosophila_data_dir"] = str(args.drosophila_data)
+    if args.source_data is not None:
+        config["source_data_dir"] = str(args.source_data)
+    if args.target_data is not None:
+        config["target_data_dir"] = str(args.target_data)
     if args.pretrained_ckpt is not None:
         config["pretrained_ckpt"] = str(args.pretrained_ckpt)
 

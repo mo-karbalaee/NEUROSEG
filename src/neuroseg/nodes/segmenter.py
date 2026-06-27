@@ -59,43 +59,49 @@ def _cellpose_segment(data: np.ndarray) -> tuple[list, list]:
     return masks, flows
 
 
-def _cache_path(output_dir: str, file_name: str, ext: str) -> Path:
-    return Path(output_dir) / "cache" / f"{ext}+{file_name}"
+def _cache_root(output_dir: str, model_key: str) -> Path:
+    return Path(output_dir) / "cache" / model_key
 
 
-def _save_results(masks, flows: Optional[list], output_dir: str, file_name: str):
-    cache_dir = Path(output_dir) / "cache"
+def _save_results(masks, flows: Optional[list], output_dir: str, file_name: str, model_key: str):
+    cache_dir = _cache_root(output_dir, model_key)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    np.save(str(_cache_path(output_dir, file_name, "masks")) + ".npy", masks)
-    with open(str(_cache_path(output_dir, file_name, "flows")) + ".pkl", "wb") as f:
+    np.save(str(cache_dir / f"masks+{file_name}.npy"), masks)
+    with open(cache_dir / f"flows+{file_name}.pkl", "wb") as f:
         pickle.dump(flows, f)
 
 
-def _load_results(output_dir: str, file_name: str) -> tuple:
-    masks = np.load(
-        str(_cache_path(output_dir, file_name, "masks")) + ".npy", allow_pickle=True
-    )
-    with open(str(_cache_path(output_dir, file_name, "flows")) + ".pkl", "rb") as f:
+def _load_results(output_dir: str, file_name: str, model_key: str) -> tuple:
+    cache_dir = _cache_root(output_dir, model_key)
+    masks = np.load(str(cache_dir / f"masks+{file_name}.npy"), allow_pickle=True)
+    with open(cache_dir / f"flows+{file_name}.pkl", "rb") as f:
         flows = pickle.load(f)
     return masks, flows
+
+
+def _model_key(checkpoint_path: Optional[str]) -> str:
+    if checkpoint_path is None:
+        return "cellpose"
+    return "jepa_" + Path(checkpoint_path).stem
 
 
 def segmenter_node(state: State) -> dict:
     file_name = state["file_name"]
     output_dir = state["output_dir"]
     checkpoint_path = state.get("checkpoint_path")
-    masks_path = _cache_path(output_dir, file_name, "masks").with_suffix(".npy")
+    key = _model_key(checkpoint_path)
+    cache_file = _cache_root(output_dir, key) / f"masks+{file_name}.npy"
 
-    if masks_path.exists():
-        print(f"Masks already cached for {file_name}")
-        masks, flows = _load_results(output_dir, file_name)
+    if cache_file.exists():
+        print(f"[{key}] Masks cached for {file_name}")
+        masks, flows = _load_results(output_dir, file_name, key)
     elif checkpoint_path:
-        print(f"Segmenting {file_name} with JEPA checkpoint")
+        print(f"[JEPA] Segmenting {file_name}")
         masks, flows = _jepa_segment(state["data"], checkpoint_path)
-        _save_results(masks, flows, output_dir, file_name)
+        _save_results(masks, flows, output_dir, file_name, key)
     else:
-        print(f"Segmenting {file_name} with Cellpose")
+        print(f"[Cellpose] Segmenting {file_name}")
         masks, flows = _cellpose_segment(state["data"])
-        _save_results(masks, flows, output_dir, file_name)
+        _save_results(masks, flows, output_dir, file_name, key)
 
     return {"masks": masks, "flows": flows}

@@ -197,25 +197,30 @@ labeled_data/
 **Hypothesis:** JEPA representations generalise better across organisms than supervised features.
 
 **Protocol:**
-1. Pretrain JEPA on zebrafish calcium imaging.
-2. Fine-tune on Drosophila with a limited budget.
-3. Compare transfer drop (Dice / mIoU) against a supervised baseline.
+
+1. Pretrain JEPA on the source-organism calcium imaging (unlabeled).
+2. Fine-tune on the target organism with a limited epoch budget.
+3. Train a supervised baseline from scratch on the target organism.
+4. Compare transfer drop (Dice / mIoU) between the two modes.
+
+Any two Neurofinder datasets work as source/target. The organism label is inferred automatically from Neurofinder directory names (e.g., `neurofinder.04.00` → zebrafish, `neurofinder.00.00` → mouse.visual_cortex). A natural split using the bundled Neurofinder data:
+
+- **Source:** `neurofinder.04.xx` (zebrafish)
+- **Target:** `neurofinder.00.xx` – `neurofinder.03.xx` (mouse visual cortex)
 
 ```bash
 uv run main.py \
   --mode train \
-  --data  /path/to/zebrafish/tiffs \
+  --data  /path/to/source/tiffs \
   --output ./checkpoints \
   --H2 \
-  --zebrafish-data /path/to/zebrafish/tiffs \
-  --drosophila-data /path/to/drosophila/labeled \
+  --source-data /path/to/neurofinder.04 \
+  --target-data /path/to/neurofinder.00 \
   --pretrain-epochs 100 \
   --finetune-epochs 10
 ```
 
-> **Status:** H2 implementation is in progress. The trainer stub documents the full protocol and required config keys.
-
-**MLflow tags:** `hypothesis=H2`, `source_organism=zebrafish`, `target_organism=drosophila`, `mode={pretrained|supervised_baseline}`
+**MLflow tags:** `hypothesis=H2`, `source_organism={inferred}`, `target_organism={inferred}`, `mode={pretrain|finetune|supervised_baseline}`
 
 ---
 

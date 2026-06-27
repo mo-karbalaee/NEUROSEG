@@ -5,11 +5,16 @@ import mlflow
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from neuroseg.checkpoint import load_compound_checkpoint
 from neuroseg.models.state import State
-from neuroseg.trainers.dataset import LabeledTIFFDataset
+from neuroseg.trainers.dataset import (
+    LabeledTIFFDataset,
+    NeurofinderDataset,
+    find_neurofinder_dirs,
+    is_neurofinder_dir,
+)
 from neuroseg.trainers.h1_trainer import H1Config, build_config, setup_seed
 from neuroseg.trainers.jepa import JEPA, build_jepa
 
@@ -33,7 +38,7 @@ def _load_encoder(checkpoint_path: Optional[str], cfg: H1Config, device: torch.d
 @torch.inference_mode()
 def _compute_similarity_gap(
     jepa: JEPA,
-    dataset: LabeledTIFFDataset,
+    dataset: Dataset,
     device: torch.device,
     img_size: int,
 ) -> dict:
@@ -168,14 +173,25 @@ def run_h3(state: State):
             "Pass it via --data or add 'h3_data_dir' to your config."
         )
 
-    dataset = LabeledTIFFDataset(
-        h3_data_dir,
-        seq_len=cfg.seq_len,
-        img_size=cfg.img_size,
-        labeled_fraction=1.0,
-        seed=cfg.seed,
-        binarize=False,
-    )
+    if is_neurofinder_dir(h3_data_dir) or find_neurofinder_dirs(h3_data_dir):
+        dataset = NeurofinderDataset(
+            h3_data_dir,
+            seq_len=cfg.seq_len,
+            img_size=cfg.img_size,
+            labeled=True,
+            labeled_fraction=1.0,
+            seed=cfg.seed,
+            binarize=False,
+        )
+    else:
+        dataset = LabeledTIFFDataset(
+            h3_data_dir,
+            seq_len=cfg.seq_len,
+            img_size=cfg.img_size,
+            labeled_fraction=1.0,
+            seed=cfg.seed,
+            binarize=False,
+        )
 
     pretrained_ckpt = extra.get("pretrained_ckpt")
     supervised_ckpt = extra.get("supervised_ckpt")
