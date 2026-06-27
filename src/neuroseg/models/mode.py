@@ -1,5 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
-class Mode(Enum):
+
+class Mode(StrEnum):
     TRAINING = "training"
     INFERENCE = "inference"

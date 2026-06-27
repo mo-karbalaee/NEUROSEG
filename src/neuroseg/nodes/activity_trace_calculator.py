@@ -1,5 +1,7 @@
-import os
+from pathlib import Path
+
 import numpy as np
+
 from neuroseg.models.state import State
 
 
@@ -20,12 +22,13 @@ def _extract_traces(masks: list, data: np.ndarray) -> np.ndarray:
     return (traces - F0) / (F0 + 1e-6)
 
 
-def _save_traces(traces: np.ndarray, file_name: str):
-    os.makedirs("output", exist_ok=True)
-    np.save(os.path.join("output", f"traces+{file_name}.npy"), traces)
+def _save_traces(traces: np.ndarray, output_dir: str, file_name: str):
+    out = Path(output_dir) / "traces"
+    out.mkdir(parents=True, exist_ok=True)
+    np.save(str(out / f"traces+{file_name}.npy"), traces)
 
 
 def activity_trace_calculator_node(state: State) -> dict:
     traces = _extract_traces(state["masks"], state["data"])
-    _save_traces(traces, state["file_name"])
+    _save_traces(traces, state["output_dir"], state["file_name"])
     return {"traces": traces}

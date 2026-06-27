@@ -1,7 +1,9 @@
-import os
 import pickle
+from pathlib import Path
+
 import numpy as np
 from cellpose import models
+
 from neuroseg.models.state import State
 
 
@@ -12,30 +14,38 @@ def _generate_mask(data: np.ndarray):
     return masks, flows
 
 
-def _save_results(masks, flows, file_name: str):
-    os.makedirs("output", exist_ok=True)
-    np.save(os.path.join("output", f"masks+{file_name}.npy"), masks)
-    with open(os.path.join("output", f"flows+{file_name}.pkl"), "wb") as f:
+def _cache_path(output_dir: str, file_name: str, ext: str) -> Path:
+    return Path(output_dir) / "cache" / f"{ext}+{file_name}"
+
+
+def _save_results(masks, flows, output_dir: str, file_name: str):
+    cache_dir = Path(output_dir) / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    np.save(str(_cache_path(output_dir, file_name, "masks")) + ".npy", masks)
+    with open(str(_cache_path(output_dir, file_name, "flows")) + ".pkl", "wb") as f:
         pickle.dump(flows, f)
 
 
-def _load_results(file_name: str):
-    masks = np.load(os.path.join("output", f"masks+{file_name}.npy"), allow_pickle=True)
-    with open(os.path.join("output", f"flows+{file_name}.pkl"), "rb") as f:
+def _load_results(output_dir: str, file_name: str):
+    masks = np.load(
+        str(_cache_path(output_dir, file_name, "masks")) + ".npy", allow_pickle=True
+    )
+    with open(str(_cache_path(output_dir, file_name, "flows")) + ".pkl", "rb") as f:
         flows = pickle.load(f)
     return masks, flows
 
 
 def segmenter_node(state: State) -> dict:
     file_name = state["file_name"]
-    masks_path = os.path.join("output", f"masks+{file_name}.npy")
+    output_dir = state["output_dir"]
+    masks_path = _cache_path(output_dir, file_name, "masks").with_suffix(".npy")
 
-    if os.path.exists(masks_path):
-        print(f"Masks already processed for {file_name}")
-        masks, flows = _load_results(file_name)
+    if masks_path.exists():
+        print(f"Masks already cached for {file_name}")
+        masks, flows = _load_results(output_dir, file_name)
     else:
         print(f"Generating masks for {file_name}")
         masks, flows = _generate_mask(state["data"])
-        _save_results(masks, flows, file_name)
+        _save_results(masks, flows, output_dir, file_name)
 
     return {"masks": masks, "flows": flows}

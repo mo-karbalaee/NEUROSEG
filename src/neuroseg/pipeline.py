@@ -1,20 +1,37 @@
 from pathlib import Path
-from langgraph.graph import StateGraph, START, END
-from neuroseg.models.state import State
-from neuroseg.models.node import Node
+
+from langgraph.graph import END, START, StateGraph
+
+from neuroseg.models.hypothesis import Hypothesis
 from neuroseg.models.mode import Mode
+from neuroseg.models.node import Node
+from neuroseg.models.state import State
+from neuroseg.nodes.activity_trace_calculator import activity_trace_calculator_node
 from neuroseg.nodes.loader import loader_node
 from neuroseg.nodes.pre_processor import pre_processor_node
 from neuroseg.nodes.segmenter import segmenter_node
-from neuroseg.nodes.activity_trace_calculator import activity_trace_calculator_node
 from neuroseg.nodes.visualizer import visualizer_node
 
 
-def _training_placeholder(_state: State):
-    print("Training not implemented yet")
+def _training_node(state: State) -> dict:
+    hypothesis = state.get("hypothesis")
+
+    if hypothesis == Hypothesis.H1:
+        from neuroseg.trainers.h1_trainer import run_h1
+        run_h1(state)
+    elif hypothesis == Hypothesis.H2:
+        from neuroseg.trainers.h2_trainer import run_h2
+        run_h2(state)
+    elif hypothesis == Hypothesis.H3:
+        from neuroseg.trainers.h3_trainer import run_h3
+        run_h3(state)
+    else:
+        raise ValueError("Training mode requires exactly one of --H1, --H2, --H3.")
+
+    return {}
 
 
-def _which_mode(state: State):
+def _which_mode(state: State) -> str:
     return state["mode"]
 
 
@@ -32,10 +49,12 @@ def build_app():
     workflow.add_node(Node.SEGMENTER, segmenter_node)
     workflow.add_node(Node.ACTIVITY_TRACE_CALCULATOR, activity_trace_calculator_node)
     workflow.add_node(Node.VISUALIZER, visualizer_node)
-    workflow.add_node(Node.TRAINING, _training_placeholder)
+    workflow.add_node(Node.TRAINING, _training_node)
 
     workflow.add_conditional_edges(
-        START, _which_mode, {Mode.INFERENCE: Node.LOADER, Mode.TRAINING: Node.TRAINING}
+        START,
+        _which_mode,
+        {Mode.INFERENCE: Node.LOADER, Mode.TRAINING: Node.TRAINING},
     )
     workflow.add_edge(Node.TRAINING, END)
     workflow.add_edge(Node.LOADER, Node.PRE_PROCESSOR)
@@ -43,20 +62,37 @@ def build_app():
     workflow.add_edge(Node.SEGMENTER, Node.ACTIVITY_TRACE_CALCULATOR)
     workflow.add_edge(Node.ACTIVITY_TRACE_CALCULATOR, Node.VISUALIZER)
     workflow.add_conditional_edges(
-        Node.VISUALIZER, _files_remaining, {"continue": Node.LOADER, "done": END}
+        Node.VISUALIZER,
+        _files_remaining,
+        {"continue": Node.LOADER, "done": END},
     )
 
     return workflow.compile()
 
 
-def run(data_dir: str | Path, mode: Mode = Mode.INFERENCE):
+def run(
+    data_dir: str | Path,
+    output_dir: str | Path,
+    mode: Mode = Mode.INFERENCE,
+    hypothesis: Hypothesis | None = None,
+    checkpoint_path: str | None = None,
+    config: dict | None = None,
+):
     data_dir = Path(data_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     file_paths = [str(p) for p in sorted(data_dir.iterdir()) if p.is_file()]
-    print(f"Found {len(file_paths)} file(s): {file_paths}")
+    print(f"Found {len(file_paths)} file(s) in {data_dir}")
 
     app = build_app()
     return app.invoke({
         "mode": mode,
+        "hypothesis": hypothesis,
+        "data_dir": str(data_dir),
+        "output_dir": str(output_dir),
+        "checkpoint_path": checkpoint_path,
+        "config": config or {},
         "file_paths": file_paths,
         "current_file_index": 0,
         "file_name": None,
