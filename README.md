@@ -42,21 +42,55 @@ The training pipeline runs one of three hypothesis-driven JEPA experiments (H1 /
 ## Requirements
 
 - Python ≥ 3.10
-- [uv](https://docs.astral.sh/uv/) — dependency and environment manager
-
-All Python dependencies (PyTorch, Cellpose, MLflow, LangGraph, etc.) are declared in `pyproject.toml` and installed automatically by `uv`.
 
 ---
 
 ## Installation
 
+### Option A — Clone and run locally (recommended for development)
+
+Uses [uv](https://docs.astral.sh/uv/) for reproducible environments:
+
 ```bash
-git clone https://github.com/<your-username>/NEUROSEG.git
+git clone https://github.com/MohammadKarbalaee/NEUROSEG.git
 cd NEUROSEG
 uv sync
+uv run main.py --help
 ```
 
-That's it. No manual pip installs, no conda environments, no editing source files.
+### Option B — pip install from GitHub (HPC / notebooks)
+
+No clone required. Installs the `neuroseg` package and a `neuroseg` CLI command:
+
+```bash
+pip install git+https://github.com/MohammadKarbalaee/NEUROSEG.git
+neuroseg --help
+```
+
+### Using in a notebook
+
+After either install method, every module is importable directly:
+
+```python
+from neuroseg.pipeline import run
+from neuroseg.models.mode import Mode
+from neuroseg.models.hypothesis import Hypothesis
+
+run(
+    data_dir="/path/to/neurofinder",
+    output_dir="/path/to/results",
+    mode=Mode.TRAINING,
+    hypothesis=Hypothesis.H1,
+    config={"pretrain_epochs": 50, "labeled_data_dir": "/path/to/labeled"},
+)
+```
+
+> **PyTorch on HPC:** If your cluster requires a specific CUDA version, install PyTorch first with the matching wheel before installing neuroseg.
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu118
+pip install git+https://github.com/MohammadKarbalaee/NEUROSEG.git
+```
 
 ---
 
