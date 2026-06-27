@@ -40,7 +40,7 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
             x = x.unsqueeze(0).unsqueeze(0).unsqueeze(0).to(device)
 
             enc_state = jepa.encoder(x)
-            enc_mean = enc_state.squeeze(2)
+            enc_mean = enc_state[:, :, 0]
             pred = seg_head(enc_mean)
             pred = F.interpolate(pred, size=(H, W), mode="bilinear", align_corners=False)
             binary = (pred.squeeze().cpu().numpy() > 0.5).astype(np.uint8)

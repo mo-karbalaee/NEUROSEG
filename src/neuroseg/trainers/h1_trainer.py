@@ -213,6 +213,8 @@ def _validate_pretrain(val_loader, jepa: JEPA, pixel_decoder, cfg: H1Config, dev
 
     jepa.train()
     pixel_decoder.train()
+    if not val_jepa:
+        return {"val/jepa_loss": 0.0, "val/recon_loss": 0.0}
     return {"val/jepa_loss": float(np.mean(val_jepa)), "val/recon_loss": float(np.mean(val_recon))}
 
 
@@ -349,6 +351,8 @@ def _validate_finetune(val_loader, jepa: JEPA, seg_head: nn.Module, device: torc
 
     jepa.train()
     seg_head.train()
+    if not dice_scores:
+        return 0.0, 0.0
     return float(np.mean(dice_scores)), float(np.mean(miou_scores))
 
 

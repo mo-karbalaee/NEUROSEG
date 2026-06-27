@@ -106,8 +106,13 @@ class TIFFVideoDataset(Dataset):
         for path in file_paths:
             video = _normalize(_load_tiff(path))
             T = video.shape[0]
-            for start in range(0, T - seq_len, seq_len):
-                self.clips.append(video[start : start + seq_len])
+            if T < seq_len:
+                padded = np.zeros((seq_len, *video.shape[1:]), dtype=video.dtype)
+                padded[:T] = video
+                self.clips.append(padded)
+            else:
+                for start in range(0, T - seq_len + 1, seq_len):
+                    self.clips.append(video[start : start + seq_len])
 
     def __len__(self) -> int:
         return len(self.clips)
@@ -248,8 +253,13 @@ class NeurofinderDataset(Dataset):
             mask = _build_nf_mask(nf_dir, orig_h, orig_w, img_size) if labeled else None
 
             T = video.shape[0]
-            for start in range(0, T - seq_len, seq_len):
-                self.clips.append((video[start : start + seq_len], mask))
+            if T < seq_len:
+                padded = np.zeros((seq_len, *video.shape[1:]), dtype=video.dtype)
+                padded[:T] = video
+                self.clips.append((padded, mask))
+            else:
+                for start in range(0, T - seq_len + 1, seq_len):
+                    self.clips.append((video[start : start + seq_len], mask))
 
         if labeled_fraction < 1.0:
             rng = np.random.default_rng(seed)
