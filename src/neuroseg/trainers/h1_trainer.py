@@ -25,7 +25,6 @@ from neuroseg.trainers.jepa import (
     JEPA,
     JEPAProbe,
     ImageDecoder,
-    Projector,
     build_jepa,
     build_seg_head,
 )
@@ -289,9 +288,7 @@ def finetune(
                 x = batch["video"].to(device)
                 mask_gt = batch["mask"].to(device)
 
-                with torch.no_grad():
-                    enc_state = jepa.encoder(x)
-
+                enc_state = jepa.encoder(x)
                 enc_mean = enc_state.mean(dim=2)
                 pred = seg_head(enc_mean)
                 pred = nn.functional.interpolate(

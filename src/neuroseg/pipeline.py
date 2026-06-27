@@ -104,5 +104,10 @@ def run(
 
 
 def visualize_pipeline(output_path: str | Path = "docs/pipeline.png"):
-    app = build_app()
-    app.get_graph().draw_png(str(output_path))
+    try:
+        app = build_app()
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        app.get_graph().draw_png(str(output_path))
+        print(f"Pipeline graph saved to {output_path}")
+    except Exception as e:
+        print(f"Could not render pipeline graph (install pygraphviz to enable): {e}")

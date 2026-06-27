@@ -53,7 +53,8 @@ def save_compound_checkpoint(
         **{k: v.state_dict() for k, v in models.items()},
     }
     torch.save(payload, path)
-    _write_sidecar(path, model_name, run_id, metadata)
+    sidecar_meta = {"compound": True, **(metadata or {})}
+    _write_sidecar(path, model_name, run_id, sidecar_meta)
     return path
 
 
@@ -68,6 +69,8 @@ def load_compound_checkpoint(path: Path) -> dict:
 
 
 def list_checkpoints(output_dir: Path) -> list[dict]:
+    """Return only compound (inference-capable) checkpoints — those that contain
+    both an encoder and a seg_head and can therefore produce segmentation masks."""
     output_dir = Path(output_dir)
     if not output_dir.exists():
         return []
@@ -78,8 +81,10 @@ def list_checkpoints(output_dir: Path) -> list[dict]:
         if meta_path.exists():
             with open(meta_path) as f:
                 meta = json.load(f)
+            if not meta.get("compound"):
+                continue
         else:
-            meta = {"model_name": cp.stem, "date": None, "dice": None, "miou": None}
+            continue
         meta["path"] = cp
         results.append(meta)
     return results
