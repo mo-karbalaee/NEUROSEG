@@ -1,0 +1,37 @@
+# neuroseg example config
+# Pass with: uv run main.py --config config.yaml ...
+# CLI flags always override values set here.
+
+# ── Model architecture ────────────────────────────────────────────────────────
+dobs: 1          # input channels (1 for grayscale calcium imaging)
+henc: 32         # encoder hidden width
+hpre: 32         # predictor hidden width
+dstc: 8          # encoder output (latent) channels
+seg_head_hidden: 16
+
+# ── Training schedule ─────────────────────────────────────────────────────────
+seq_len: 10
+img_size: 128
+batch_size: 8
+num_workers: 2
+lr: 0.001
+pretrain_epochs: 100
+finetune_epochs: 50
+steps: 4          # JEPA unroll steps
+seed: 1
+val_split: 0.1
+
+# ── H1: semi-supervised segmentation ─────────────────────────────────────────
+labeled_data_dir: /path/to/neurofinder/labeled
+labeled_fractions: [0.01, 0.05, 0.10, 1.0]
+
+# ── H2: cross-organism transfer ───────────────────────────────────────────────
+source_data_dir: /path/to/neurofinder.04    # zebrafish (source)
+target_data_dir: /path/to/neurofinder.00    # mouse cortex (target)
+finetune_budget: 10                         # fine-tune epochs on target organism
+
+# ── H3: temporal representation stability ────────────────────────────────────
+# Run H1 first to produce these checkpoints.
+h3_data_dir: /path/to/neurofinder/labeled
+pretrained_ckpt: ./checkpoints/jepa_pretrained_h1_<run_id>.pt
+supervised_ckpt: ./checkpoints/jepa_h1_supervised_f100_<run_id>.pt

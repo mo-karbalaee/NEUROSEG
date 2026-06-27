@@ -117,13 +117,15 @@ NEUROSEG/
 │   │   ├── activity_trace_calculator.py
 │   │   └── visualizer.py
 │   └── trainers/                    # Training modules
-│       ├── jepa.py                  # JEPA model components
-│       ├── dataset.py               # TIFFVideoDataset, LabeledTIFFDataset
+│       ├── jepa.py                  # JEPA model + factory functions
+│       ├── dataset.py               # TIFFVideoDataset, LabeledTIFFDataset, NeurofinderDataset
 │       ├── h1_trainer.py            # H1 — semi-supervised segmentation
-│       ├── h2_trainer.py            # H2 — cross-organism transfer (stub)
-│       └── h3_trainer.py            # H3 — temporal stability (stub)
-└── src/utils/
-    └── EB_JEPA_NEUROFINDER.py       # Original research prototype
+│       ├── h2_trainer.py            # H2 — cross-organism transfer
+│       └── h3_trainer.py            # H3 — temporal representation stability
+├── tests/
+│   └── test_smoke.py                # Smoke tests (model, metrics, checkpoint)
+└── archive/
+    └── EB_JEPA_NEUROFINDER.py       # Original research prototype (reference only)
 ```
 
 ---
@@ -159,6 +161,18 @@ Select checkpoint [0-2]:
 ```bash
 uv run main.py --mode inference --data data/ --output output/
 ```
+
+### Config File
+
+Any hyperparameter or hypothesis-specific path can be set in a YAML file and passed with `--config`. CLI flags always win over the file.
+
+```bash
+cp config.example.yaml config.yaml
+# edit config.yaml, then:
+uv run main.py --mode train --H1 --data /path/to/data --output ./checkpoints --config config.yaml
+```
+
+See [config.example.yaml](config.example.yaml) for all available keys.
 
 ### Training Mode
 
@@ -263,22 +277,49 @@ uv run main.py \
 **Hypothesis:** JEPA embeddings are more stable across time for the same neuron than for different neurons.
 
 **Protocol:**
-1. Encode frames with pretrained / baseline / random encoders.
-2. Pool per-neuron embeddings using segmentation masks.
-3. Measure within-neuron vs. between-neuron cosine similarity gap.
+
+1. Encode frames with three encoder variants: JEPA-pretrained, supervised-baseline, random-init.
+2. Pool per-neuron embeddings spatially using integer segmentation masks.
+3. Compute within-neuron cosine similarity (same neuron, different frames) and between-neuron cosine similarity (different neurons, same frame).
+4. Report the gap: within − between. Larger gap = more temporally stable representations.
+
+> **Prerequisite:** H3 compares three encoders. Run H1 first to produce the pretrained and supervised-baseline checkpoints, then pass their paths to H3.
 
 ```bash
-uv run main.py \
-  --mode train \
-  --data  /path/to/annotated/tiffs \
+# Step 1 — run H1 to get checkpoints
+uv run main.py --mode train --H1 \
+  --data /path/to/neurofinder \
   --output ./checkpoints \
-  --H3 \
-  --pretrained-ckpt ./checkpoints/jepa_pretrained_h1_<run_id>.pt
+  --labeled-data /path/to/neurofinder
+
+# Step 2 — run H3 pointing at those checkpoints
+uv run main.py --mode train --H3 \
+  --data /path/to/neurofinder \
+  --output ./checkpoints \
+  --config config.yaml
 ```
 
-> **Status:** H3 implementation is in progress. The trainer stub documents the full protocol and required config keys.
+Where `config.yaml` contains:
+
+```yaml
+h3_data_dir: /path/to/neurofinder
+pretrained_ckpt: ./checkpoints/jepa_pretrained_h1_<run_id>.pt
+supervised_ckpt: ./checkpoints/jepa_h1_supervised_f100_<run_id>.pt
+```
+
+The `no_pretrain` mode (random encoder) always runs automatically — no checkpoint needed.
 
 **MLflow tags:** `hypothesis=H3`, `mode={pretrained|supervised_baseline|no_pretrain}`
+
+---
+
+## Running Tests
+
+```bash
+uv run pytest tests/ -v
+```
+
+17 smoke tests cover model instantiation, forward passes, metrics, checkpoint round-trips, and dataset helpers. No GPU or real data required.
 
 ---
 

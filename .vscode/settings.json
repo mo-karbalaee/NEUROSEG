@@ -1,11 +1,26 @@
 {
   "cSpell.words": [
+    "ckpt",
+    "einops",
+    "finetune",
     "JEPA",
+    "langgraph",
+    "matplotlib",
     "miou",
+    "mlflow",
     "NEUROFINDER",
+    "numpy",
+    "pretrain",
     "pretrained",
     "pretraining",
     "pyproject",
+    "pytest",
+    "pyyaml",
+    "scikit",
+    "setuptools",
+    "scipy",
+    "tifffile",
+    "tqdm",
     "zebrafish"
   ]
 }

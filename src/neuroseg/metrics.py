@@ -4,8 +4,10 @@ import numpy as np
 def dice(pred: np.ndarray, gt: np.ndarray) -> float:
     pred = pred.astype(bool)
     gt = gt.astype(bool)
-    intersection = (pred & gt).sum()
-    return float(2 * intersection / (pred.sum() + gt.sum() + 1e-8))
+    denom = pred.sum() + gt.sum()
+    if denom == 0:
+        return 1.0
+    return float(2 * (pred & gt).sum() / denom)
 
 
 def miou(pred: np.ndarray, gt: np.ndarray, num_classes: int = 2) -> float:

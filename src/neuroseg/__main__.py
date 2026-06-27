@@ -1,9 +1,16 @@
 import argparse
 from pathlib import Path
+from typing import Any
 
 from neuroseg.models.hypothesis import Hypothesis
 from neuroseg.models.mode import Mode
 from neuroseg.pipeline import run
+
+
+def _load_yaml(path: Path) -> dict[str, Any]:
+    import yaml
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -86,6 +93,14 @@ def _parse_args() -> argparse.Namespace:
         metavar="FILE",
         help="(H3) Path to pretrained JEPA checkpoint.",
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="YAML config file. Sets any H1Config field and hypothesis-specific keys. "
+             "CLI flags take precedence over values in the file.",
+    )
 
     return parser.parse_args()
 
@@ -112,10 +127,10 @@ def main():
         selected = pick_checkpoint(args.output)
         checkpoint_path = str(selected) if selected else None
 
-    config: dict = {
-        "pretrain_epochs": args.pretrain_epochs,
-        "finetune_epochs": args.finetune_epochs,
-    }
+    config: dict = _load_yaml(args.config) if args.config else {}
+
+    config.setdefault("pretrain_epochs", args.pretrain_epochs)
+    config.setdefault("finetune_epochs", args.finetune_epochs)
     if args.labeled_data is not None:
         config["labeled_data_dir"] = str(args.labeled_data)
     if args.labeled_fractions is not None:
