@@ -33,7 +33,7 @@ def _build_h2_config(state: State) -> H1Config:
     cfg = build_config(state)
     extra = state.get("config", {})
     cfg.pretrain_epochs = extra.get("pretrain_epochs", cfg.pretrain_epochs)
-    cfg.finetune_epochs = extra.get("finetune_budget", 10)
+    cfg.finetune_epochs = extra.get("finetune_budget", extra.get("finetune_epochs", cfg.finetune_epochs))
     return cfg
 
 
