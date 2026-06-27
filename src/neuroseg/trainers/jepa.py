@@ -342,6 +342,30 @@ class JEPA(nn.Module):
         return (all_steps if return_all_steps else predicted_states), losses
 
 
+def build_jepa(arch: dict, device: torch.device) -> "JEPA":
+    dobs = arch.get("dobs", 1)
+    henc = arch.get("henc", 32)
+    hpre = arch.get("hpre", 32)
+    dstc = arch.get("dstc", 8)
+
+    encoder = ResNet5(dobs, henc, dstc)
+    predictor_model = ResUNet(2 * dstc, hpre, dstc)
+    predictor = StateOnlyPredictor(predictor_model, context_length=2)
+    projector = Projector(f"{dstc}-{dstc * 4}-{dstc * 4}")
+    regularizer = VCLoss(10.0, 100.0, proj=projector)
+    ploss_fn = SquareLossSeq(projector)
+    return JEPA(encoder, encoder, predictor, regularizer, ploss_fn).to(device)
+
+
+def build_seg_head(dstc: int, hidden: int = 16) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Conv2d(dstc, hidden, 3, padding=1),
+        nn.ReLU(),
+        nn.Conv2d(hidden, 1, 1),
+        nn.Sigmoid(),
+    )
+
+
 class JEPAProbe(nn.Module):
     def __init__(self, jepa, head, hcost):
         super().__init__()

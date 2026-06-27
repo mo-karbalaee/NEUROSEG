@@ -1,22 +1,49 @@
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-from cellpose import plot
 
 from neuroseg.models.state import State
 
 
-def _visualize_segmentation(data: np.ndarray, masks, flows, output_dir: str, file_name: str):
+def _show_mask_overlay(ax: plt.Axes, frame: np.ndarray, mask: np.ndarray):
+    ax.imshow(frame, cmap="gray")
+    if mask.max() > 0:
+        colored = np.zeros((*frame.shape[:2], 4), dtype=np.float32)
+        for label_id in range(1, int(mask.max()) + 1):
+            region = mask == label_id
+            color = plt.cm.tab20(label_id % 20)
+            colored[region] = [*color[:3], 0.5]
+        ax.imshow(colored)
+    ax.axis("off")
+
+
+def _visualize_segmentation(
+    data: np.ndarray,
+    masks,
+    flows: Optional[list],
+    output_dir: str,
+    file_name: str,
+):
     out = Path(output_dir) / "segmentation" / file_name
     out.mkdir(parents=True, exist_ok=True)
-    fig = plt.figure(figsize=(8, 8))
+
     for t in range(data.shape[0]):
-        plt.clf()
-        plot.show_segmentation(fig, data[t], masks[t], flows[t][0])
-        plt.title(f"Frame {t}")
+        frame = data[t] if data[t].ndim == 2 else data[t][:, :, 0]
+
+        if flows is not None:
+            from cellpose import plot
+            fig = plt.figure(figsize=(8, 8))
+            plot.show_segmentation(fig, frame, masks[t], flows[t][0])
+            plt.title(f"Frame {t}")
+        else:
+            fig, ax = plt.subplots(figsize=(8, 8))
+            _show_mask_overlay(ax, frame, masks[t])
+            ax.set_title(f"Frame {t}")
+
         plt.savefig(str(out / f"frame_{t}.png"), dpi=100, bbox_inches="tight")
-    plt.close(fig)
+        plt.close(fig)
 
 
 def _visualize_traces(traces: np.ndarray, output_dir: str, file_name: str):
@@ -61,16 +88,10 @@ def _save_individual_traces(traces: np.ndarray, output_dir: str, file_name: str)
 
 
 def visualizer_node(state: State) -> dict:
-    data = state["data"]
-    file_name = state["file_name"]
-    masks = state["masks"]
-    flows = state["flows"]
-    traces = state["traces"]
-    output_dir = state["output_dir"]
-
-    _visualize_segmentation(data, masks, flows, output_dir, file_name)
-    _visualize_traces(traces, output_dir, file_name)
-    _save_individual_traces(traces, output_dir, file_name)
-
-    print(f"Finished processing {file_name}")
+    _visualize_segmentation(
+        state["data"], state["masks"], state["flows"], state["output_dir"], state["file_name"]
+    )
+    _visualize_traces(state["traces"], state["output_dir"], state["file_name"])
+    _save_individual_traces(state["traces"], state["output_dir"], state["file_name"])
+    print(f"Finished processing {state['file_name']}")
     return {}
