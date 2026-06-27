@@ -9,6 +9,7 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 
 ## Table of Contents
 
+- [Reproduce in 20 Minutes](#reproduce-in-20-minutes)
 - [Overview](#overview)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -22,6 +23,53 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
   - [H3 — Temporal representation stability](#h3--temporal-representation-stability)
 - [Outputs](#outputs)
 - [Tracking with MLflow](#tracking-with-mlflow)
+
+---
+
+## Reproduce in 20 Minutes
+
+No GPU or real dataset required — `demo.sh` runs end-to-end on CPU in approximately 10–20 minutes.
+
+### What you need
+
+- Python ≥ 3.10
+- [uv](https://docs.astral.sh/uv/) (`pip install uv`)
+- No data download — synthetic data is generated automatically
+
+### One-command demo
+
+```bash
+git clone https://github.com/MohammadKarbalaee/NEUROSEG.git
+cd NEUROSEG
+uv sync
+bash demo.sh
+```
+
+### What happens (4 steps)
+
+| Step | What runs | Output |
+| ---- | --------- | ------ |
+| 1 | `scripts/generate_demo_data.py` | `data/demo/` — 100-frame Neurofinder dataset (5 synthetic neurons, 64×64) |
+| 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune at 3 labeled-data fractions |
+| 3 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
+| 4 | `scripts/plot_results.py` | `output/figures/` — two result figures |
+
+### Result figures
+
+**Figure 1 — `output/figures/h1_dice_comparison.png`**  
+Grouped bar chart: Dice score vs labeled-data fraction (10 %, 50 %, 100 %) comparing JEPA-pretrained fine-tuning against a supervised baseline trained from scratch. Shows whether self-supervised pretraining helps when labels are scarce.
+
+**Figure 2 — `output/figures/segmentation_preview.png`**  
+Side-by-side comparison of a raw calcium imaging frame and the predicted neuron segmentation overlay from the inference run.
+
+### Inspect training logs
+
+```bash
+uv run mlflow ui
+# then open http://localhost:5000
+```
+
+Look for the `neuroseg-H1-pretrain` and `neuroseg-H1-finetune` experiments.
 
 ---
 

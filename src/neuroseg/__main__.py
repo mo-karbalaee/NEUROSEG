@@ -101,6 +101,13 @@ def _parse_args() -> argparse.Namespace:
         help="YAML config file. Sets any H1Config field and hypothesis-specific keys. "
              "CLI flags take precedence over values in the file.",
     )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="(inference) Use this checkpoint file directly, skipping the interactive picker.",
+    )
 
     return parser.parse_args()
 
@@ -123,9 +130,12 @@ def main():
 
     checkpoint_path = None
     if mode == Mode.INFERENCE:
-        from neuroseg.cli import pick_checkpoint
-        selected = pick_checkpoint(args.output)
-        checkpoint_path = str(selected) if selected else None
+        if args.checkpoint:
+            checkpoint_path = str(args.checkpoint)
+        else:
+            from neuroseg.cli import pick_checkpoint
+            selected = pick_checkpoint(args.output)
+            checkpoint_path = str(selected) if selected else None
 
     config: dict = _load_yaml(args.config) if args.config else {}
 

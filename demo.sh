@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# "Reproduce in 20 Minutes" demo.
+# Run this from the NEUROSEG repository root.
+#
+# Usage:
+#   bash demo.sh
+#
+# What it does (4 steps):
+#   1. Generate synthetic Neurofinder-format data (no download needed).
+#   2. Train JEPA on that data (H1 — pretrain + finetune, scaled to ~10 min on CPU).
+#   3. Run inference on a stacked TIFF and write segmentation output.
+#   4. Produce two result figures from the training and inference outputs.
+#
+# Output:
+#   output/figures/h1_dice_comparison.png  — Dice vs labeled-data fraction
+#   output/figures/segmentation_preview.png — raw frame + segmentation overlay
+
+set -euo pipefail
+
+CHECKPOINTS_DIR="output/demo_checkpoints"
+INFERENCE_DIR="output/demo_inference"
+FIGURES_DIR="output/figures"
+
+# ── Step 1: Generate data ──────────────────────────────────────────────────────
+echo ""
+echo "── Step 1/4  Generating synthetic demo dataset ──────────────────────────"
+uv run python scripts/generate_demo_data.py \
+    --out data/demo \
+    --stack-out data/demo_stacks \
+    --frames 100 \
+    --size 64 \
+    --neurons 5 \
+    --seed 42
+
+# ── Step 2: Train (H1, scaled-down config) ────────────────────────────────────
+echo ""
+echo "── Step 2/4  Training JEPA — H1 (pretrain + finetune) ───────────────────"
+uv run main.py \
+    --mode train \
+    --H1 \
+    --data data/demo \
+    --output "$CHECKPOINTS_DIR" \
+    --config config.demo.yaml
+
+# ── Step 3: Find best compound checkpoint ─────────────────────────────────────
+echo ""
+echo "── Step 3/4  Running inference ───────────────────────────────────────────"
+
+CHECKPOINT_PATH=$(python - <<'EOF'
+import json, sys
+from pathlib import Path
+
+ckpt_dir = Path("output/demo_checkpoints")
+candidates = []
+for jf in sorted(ckpt_dir.glob("*.json"), key=lambda p: p.stat().st_mtime):
+    try:
+        meta = json.loads(jf.read_text())
+    except Exception:
+        continue
+    if not meta.get("compound"):
+        continue
+    pt = jf.with_suffix(".pt")
+    if pt.exists():
+        candidates.append((meta.get("val_dice", 0.0), str(pt)))
+
+if not candidates:
+    print("", file=sys.stderr)
+    sys.exit(1)
+
+# pick the checkpoint with the highest val_dice; on tie, last by mtime
+best = max(candidates, key=lambda t: t[0])
+print(best[1])
+EOF
+)
+
+if [ -z "$CHECKPOINT_PATH" ]; then
+    echo "ERROR: no compound checkpoint found in $CHECKPOINTS_DIR" >&2
+    exit 1
+fi
+
+echo "Using checkpoint: $CHECKPOINT_PATH"
+
+uv run main.py \
+    --mode inference \
+    --data data/demo_stacks \
+    --output "$INFERENCE_DIR" \
+    --checkpoint "$CHECKPOINT_PATH"
+
+# ── Step 4: Plot results ───────────────────────────────────────────────────────
+echo ""
+echo "── Step 4/4  Generating result figures ───────────────────────────────────"
+uv run python scripts/plot_results.py \
+    --output "$FIGURES_DIR" \
+    --inference-output "$INFERENCE_DIR"
+
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "  Demo complete."
+echo ""
+echo "  Figure 1 (H1 Dice comparison):"
+echo "    $FIGURES_DIR/h1_dice_comparison.png"
+echo ""
+echo "  Figure 2 (Segmentation preview):"
+echo "    $FIGURES_DIR/segmentation_preview.png"
+echo ""
+echo "  MLflow UI:  uv run mlflow ui  →  http://localhost:5000"
+echo "════════════════════════════════════════════════════════"

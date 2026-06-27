@@ -1,0 +1,27 @@
+# Demo config — runs the full H1 pipeline in ~10 minutes on CPU.
+# Use with: uv run main.py --mode train --H1 --config config.demo.yaml ...
+
+# ── Model (small) ─────────────────────────────────────────────────────────────
+dobs: 1
+henc: 8
+hpre: 8
+dstc: 4
+seg_head_hidden: 4
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+seq_len: 5
+img_size: 64
+batch_size: 4
+num_workers: 0        # avoids multiprocessing issues in demo environments
+val_split: 0.2
+
+# ── Training schedule (scaled down) ───────────────────────────────────────────
+lr: 0.001
+steps: 2              # JEPA unroll steps
+seed: 42
+pretrain_epochs: 5
+finetune_epochs: 3
+
+# ── H1 specific ───────────────────────────────────────────────────────────────
+labeled_data_dir: data/demo
+labeled_fractions: [0.1, 0.5, 1.0]
