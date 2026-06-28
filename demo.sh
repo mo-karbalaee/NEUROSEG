@@ -91,7 +91,8 @@ echo ""
 echo "── Step 4/4  Generating result figures ───────────────────────────────────"
 uv run python scripts/plot_results.py \
     --output "$FIGURES_DIR" \
-    --inference-output "$INFERENCE_DIR"
+    --inference-output "$INFERENCE_DIR" \
+    --logs "$CHECKPOINTS_DIR/logs/runs.csv"
 
 echo ""
 echo "════════════════════════════════════════════════════════"

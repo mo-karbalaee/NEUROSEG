@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Optional
 
-import mlflow
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -120,7 +119,9 @@ def _run_mode(
     dataset: LabeledTIFFDataset,
     cfg: H1Config,
     device: torch.device,
+    log_path: Path,
 ):
+    from neuroseg.logger import RunLogger
     jepa = _load_encoder(checkpoint_path, cfg, device)
     metrics = _compute_similarity_gap(jepa, dataset, device, cfg.img_size)
 
@@ -129,10 +130,8 @@ def _run_mode(
         f"between={metrics['between_sim']:.4f}  gap={metrics['gap']:.4f}"
     )
 
-    mlflow.set_experiment("neuroseg-H3")
-    with mlflow.start_run(tags={"hypothesis": "H3", "mode": mode}):
-        mlflow.log_params({"img_size": cfg.img_size, "seq_len": cfg.seq_len})
-        mlflow.log_metrics(metrics)
+    logger = RunLogger(log_path, hypothesis="H3", mode=mode, model_name=mode)
+    logger.log(**metrics)
 
 
 def run_h3(state: State):
@@ -196,14 +195,15 @@ def run_h3(state: State):
     pretrained_ckpt = extra.get("pretrained_ckpt")
     supervised_ckpt = extra.get("supervised_ckpt")
 
+    log_path = Path(state["output_dir"]) / "logs" / "runs.csv"
     print(f"[H3] device={device} | samples={len(dataset)}")
 
     if pretrained_ckpt:
-        _run_mode("pretrained", pretrained_ckpt, dataset, cfg, device)
+        _run_mode("pretrained", pretrained_ckpt, dataset, cfg, device, log_path)
 
     if supervised_ckpt:
-        _run_mode("supervised_baseline", supervised_ckpt, dataset, cfg, device)
+        _run_mode("supervised_baseline", supervised_ckpt, dataset, cfg, device, log_path)
 
-    _run_mode("no_pretrain", None, dataset, cfg, device)
+    _run_mode("no_pretrain", None, dataset, cfg, device, log_path)
 
     print("[H3] Done.")

@@ -27,33 +27,27 @@ import numpy as np
 
 # ── Figure 1: H1 Dice vs labeled fraction ─────────────────────────────────────
 
-def _query_mlflow() -> dict | None:
-    try:
-        import mlflow
-        client = mlflow.tracking.MlflowClient()
-        exp = client.get_experiment_by_name("neuroseg-H1-finetune")
-        if exp is None:
-            print("MLflow experiment 'neuroseg-H1-finetune' not found.")
-            return None
-
-        runs = client.search_runs(
-            [exp.experiment_id],
-            order_by=["attribute.start_time ASC"],
-        )
-        results: dict[str, dict[float, float]] = {
-            "finetune": {},
-            "supervised_baseline": {},
-        }
-        for run in runs:
-            mode = run.data.tags.get("mode")
-            frac = run.data.tags.get("labeled_fraction")
-            dice = run.data.metrics.get("val/dice")
-            if mode in results and frac is not None and dice is not None:
-                results[mode][float(frac)] = dice
-        return results
-    except Exception as exc:
-        print(f"Could not read MLflow results: {exc}")
+def _read_csv(log_path: Path) -> dict | None:
+    import csv
+    if not log_path.exists():
+        print(f"No experiment log found at {log_path} — skipping Figure 1.")
         return None
+
+    results: dict[str, dict[float, float]] = {
+        "finetune": {},
+        "supervised_baseline": {},
+    }
+    with open(log_path, newline="") as f:
+        for row in csv.DictReader(f):
+            mode = row.get("mode", "")
+            frac_str = row.get("labeled_fraction", "")
+            dice_str = row.get("val_dice", "")
+            if mode in results and frac_str and dice_str:
+                try:
+                    results[mode][float(frac_str)] = float(dice_str)
+                except ValueError:
+                    pass
+    return results
 
 
 def plot_dice_comparison(results: dict, out_path: Path):
@@ -166,9 +160,11 @@ def main():
                         metavar="DIR", help="Where to save the figures.")
     parser.add_argument("--inference-output", type=Path, default=Path("output/demo_inference"),
                         metavar="DIR", help="Directory where inference results were written.")
+    parser.add_argument("--logs", type=Path, default=Path("output/demo_checkpoints/logs/runs.csv"),
+                        metavar="CSV", help="Path to runs.csv written by the trainer.")
     args = parser.parse_args()
 
-    results = _query_mlflow()
+    results = _read_csv(args.logs)
     if results:
         plot_dice_comparison(results, args.output / "h1_dice_comparison.png")
 

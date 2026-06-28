@@ -22,19 +22,19 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
   - [H2 — Cross-organism transfer](#h2--cross-organism-transfer)
   - [H3 — Temporal representation stability](#h3--temporal-representation-stability)
 - [Outputs](#outputs)
-- [Tracking with MLflow](#tracking-with-mlflow)
+- [Experiment Logs](#experiment-logs)
 
 ---
 
 ## Reproduce in 20 Minutes
 
-No GPU or real dataset required — `demo.sh` runs end-to-end on CPU in approximately 10–20 minutes.
+`demo.sh` runs the full H1 pipeline end-to-end on CPU in approximately 10–20 minutes using a real subset of the Neurofinder benchmark dataset.
 
 ### What you need
 
-- Python ≥ 3.10
+- Python ≥ 3.10, < 3.14
 - [uv](https://docs.astral.sh/uv/) (`pip install uv`)
-- No data download — synthetic data is generated automatically
+- `data/neurofinder.00.00/` — download the `neurofinder.00.00` training set from the [Neurofinder benchmark](https://github.com/codeneuro/neurofinder) and place it at this path
 
 ### One-command demo
 
@@ -49,8 +49,8 @@ bash demo.sh
 
 | Step | What runs | Output |
 | ---- | --------- | ------ |
-| 1 | `scripts/generate_demo_data.py` | `data/demo/` — 100-frame Neurofinder dataset (5 synthetic neurons, 64×64) |
-| 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune at 3 labeled-data fractions |
+| 1 | `scripts/prepare_demo_data.py` | `data/demo/` — first 100 frames of `neurofinder.00.00` with real labels |
+| 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune + supervised baseline at 3 labeled-data fractions |
 | 3 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
 | 4 | `scripts/plot_results.py` | `output/figures/` — two result figures |
 
@@ -65,11 +65,10 @@ Side-by-side comparison of a raw calcium imaging frame and the predicted neuron 
 ### Inspect training logs
 
 ```bash
-uv run mlflow ui
-# then open http://localhost:5000
+cat output/demo_checkpoints/logs/runs.csv
 ```
 
-Look for the `neuroseg-H1-pretrain` and `neuroseg-H1-finetune` experiments.
+Each row is one training epoch. Columns: `timestamp`, `run_id`, `hypothesis`, `mode`, `model_name`, `labeled_fraction`, `epoch`, `train_loss`, `val_dice`, `val_miou`, `checkpoint`.
 
 ---
 
@@ -80,16 +79,16 @@ NEUROSEG has two top-level modes:
 | Mode | Input | Output |
 |------|-------|--------|
 | **Inference** | Directory of TIFF stacks | Segmentation masks, activity traces, plots |
-| **Training** | Directory of TIFF stacks | JEPA model checkpoint, MLflow experiment logs |
+| **Training** | Directory of TIFF stacks | JEPA model checkpoint, CSV experiment log |
 
-The inference pipeline runs: **load → normalize → segment (Cellpose) → extract ΔF/F₀ traces → visualize**.  
+The inference pipeline runs: **load → normalize → segment → extract ΔF/F₀ traces → visualize**.  
 The training pipeline runs one of three hypothesis-driven JEPA experiments (H1 / H2 / H3).
 
 ---
 
 ## Requirements
 
-- Python ≥ 3.10
+- Python ≥ 3.10, < 3.14
 
 ---
 
@@ -127,36 +126,52 @@ from neuroseg.models.hypothesis import Hypothesis
 run(
     data_dir="/path/to/neurofinder",
     output_dir="/path/to/results",
-    mode=Mode.TRAINING,
+    mode=Mode.TRAIN,
     hypothesis=Hypothesis.H1,
-    config={"pretrain_epochs": 50, "labeled_data_dir": "/path/to/labeled"},
+    config={
+        "pretrain_epochs": 200,
+        "finetune_epochs": 100,
+        "labeled_data_dir": "/path/to/neurofinder",
+        "img_size": 128,
+        "batch_size": 4,
+        "seq_len": 5,
+    },
 )
 ```
 
-> **PyTorch on HPC:** If your cluster requires a specific CUDA version, install PyTorch first with the matching wheel before installing neuroseg.
+> **PyTorch on HPC / Kaggle:** If your environment requires a specific CUDA version, install PyTorch first before installing neuroseg.
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu118
 pip install git+https://github.com/mo-karbalaee/NEUROSEG.git
 ```
 
+> **GPU memory:** On a 15 GB GPU, use `batch_size: 4` and `seq_len: 5`. Reduce further if you hit OOM. Set `PYTORCH_ALLOC_CONF=expandable_segments:True` to reduce fragmentation.
+
 ---
 
 ## Project Structure
 
-```
+```text
 NEUROSEG/
 ├── main.py                          # CLI entry point
 ├── pyproject.toml
-├── data/                            # Put your TIFF stacks here
+├── config.demo.yaml                 # Scaled-down config for the demo run
+├── demo.sh                          # End-to-end reproducibility script
+├── data/
+│   └── neurofinder.00.00/           # Download from the Neurofinder benchmark
+├── scripts/
+│   ├── prepare_demo_data.py         # Slice a real-data subset for the demo
+│   └── plot_results.py              # Generate figures from training + inference output
 ├── src/neuroseg/
 │   ├── pipeline.py                  # LangGraph pipeline definition
+│   ├── logger.py                    # CSV experiment logger
 │   ├── metrics.py                   # dice(), miou()
 │   ├── checkpoint.py                # checkpoint save / list
 │   ├── cli.py                       # interactive checkpoint picker
 │   ├── models/
 │   │   ├── state.py                 # LangGraph state schema
-│   │   ├── mode.py                  # Mode enum (TRAINING / INFERENCE)
+│   │   ├── mode.py                  # Mode enum (TRAIN / INFERENCE)
 │   │   └── hypothesis.py            # Hypothesis enum (H1 / H2 / H3)
 │   ├── nodes/                       # Inference pipeline nodes
 │   │   ├── loader.py
@@ -195,7 +210,7 @@ uv run main.py \
 
 On first run you will be prompted to pick a model checkpoint (or skip to use the Cellpose baseline):
 
-```
+```text
 Available checkpoints:
   [1] jepa_pretrained_h1  H1  2024-11-01  Dice=0.8821  mIoU=0.7943
   [2] jepa_h1_finetune_f100  H1  2024-11-02  Dice=0.9104  mIoU=0.8317
@@ -204,23 +219,15 @@ Available checkpoints:
 Select checkpoint [0-2]:
 ```
 
-**Quick run on the bundled sample:**
-
-```bash
-uv run main.py --mode inference --data data/ --output output/
-```
-
 ### Config File
 
 Any hyperparameter or hypothesis-specific path can be set in a YAML file and passed with `--config`. CLI flags always win over the file.
 
 ```bash
-cp config.example.yaml config.yaml
-# edit config.yaml, then:
 uv run main.py --mode train --H1 --data /path/to/data --output ./checkpoints --config config.yaml
 ```
 
-See [config.example.yaml](config.example.yaml) for all available keys.
+See [config.demo.yaml](config.demo.yaml) for all available keys.
 
 ### Training Mode
 
@@ -243,37 +250,27 @@ uv run main.py \
 **Hypothesis:** Self-supervised JEPA pretraining improves segmentation when labeled data is scarce.
 
 **Protocol:**
+
 1. Pretrain JEPA on unlabeled TIFF stacks.
 2. Fine-tune with 1 %, 5 %, 10 %, and 100 % of labeled data.
-3. Train a supervised baseline from scratch under identical conditions.
+3. Train a supervised baseline from scratch under identical conditions (same architecture, random init).
 4. Compare Dice / mIoU curves across labeled-data fractions.
 
-**Minimal run (pretraining only, no labeled data):**
+**Full run:**
 
 ```bash
 uv run main.py \
   --mode train \
-  --data  /path/to/unlabeled/tiffs \
+  --data  /path/to/neurofinder.00.00 \
   --output ./checkpoints \
   --H1 \
-  --pretrain-epochs 100
-```
-
-**Full run (pretraining + fine-tuning at all fractions):**
-
-```bash
-uv run main.py \
-  --mode train \
-  --data  /path/to/unlabeled/tiffs \
-  --output ./checkpoints \
-  --H1 \
-  --pretrain-epochs 100 \
-  --labeled-data /path/to/labeled/data \
+  --pretrain-epochs 200 \
+  --labeled-data /path/to/neurofinder.00.00 \
   --labeled-fractions 0.01 0.05 0.10 1.0 \
-  --finetune-epochs 50
+  --finetune-epochs 100
 ```
 
-Labeled data must follow this layout:
+Neurofinder-format data is auto-detected. Custom data must follow this layout:
 
 ```
 labeled_data/
@@ -283,8 +280,6 @@ labeled_data/
   sample_002/
     ...
 ```
-
-**MLflow tags:** `hypothesis=H1`, `labeled_fraction={f}`, `mode={pretrain|finetune|supervised_baseline}`
 
 ---
 
@@ -299,10 +294,7 @@ labeled_data/
 3. Train a supervised baseline from scratch on the target organism.
 4. Compare transfer drop (Dice / mIoU) between the two modes.
 
-Any two Neurofinder datasets work as source/target. The organism label is inferred automatically from Neurofinder directory names (e.g., `neurofinder.04.00` → zebrafish, `neurofinder.00.00` → mouse.visual_cortex). A natural split using the bundled Neurofinder data:
-
-- **Source:** `neurofinder.04.xx` (zebrafish)
-- **Target:** `neurofinder.00.xx` – `neurofinder.03.xx` (mouse visual cortex)
+The organism label is inferred automatically from Neurofinder directory names (e.g., `neurofinder.04.00` → zebrafish, `neurofinder.00.00` → mouse.visual_cortex).
 
 ```bash
 uv run main.py \
@@ -315,8 +307,6 @@ uv run main.py \
   --pretrain-epochs 100 \
   --finetune-epochs 10
 ```
-
-**MLflow tags:** `hypothesis=H2`, `source_organism={inferred}`, `target_organism={inferred}`, `mode={pretrain|finetune|supervised_baseline}`
 
 ---
 
@@ -331,7 +321,7 @@ uv run main.py \
 3. Compute within-neuron cosine similarity (same neuron, different frames) and between-neuron cosine similarity (different neurons, same frame).
 4. Report the gap: within − between. Larger gap = more temporally stable representations.
 
-> **Prerequisite:** H3 compares three encoders. Run H1 first to produce the pretrained and supervised-baseline checkpoints, then pass their paths to H3.
+> **Prerequisite:** Run H1 first to produce the pretrained and supervised-baseline checkpoints.
 
 ```bash
 # Step 1 — run H1 to get checkpoints
@@ -357,8 +347,6 @@ supervised_ckpt: ./checkpoints/jepa_h1_supervised_f100_<run_id>.pt
 
 The `no_pretrain` mode (random encoder) always runs automatically — no checkpoint needed.
 
-**MLflow tags:** `hypothesis=H3`, `mode={pretrained|supervised_baseline|no_pretrain}`
-
 ---
 
 ## Running Tests
@@ -367,7 +355,7 @@ The `no_pretrain` mode (random encoder) always runs automatically — no checkpo
 uv run pytest tests/ -v
 ```
 
-17 smoke tests cover model instantiation, forward passes, metrics, checkpoint round-trips, and dataset helpers. No GPU or real data required.
+Smoke tests cover model instantiation, forward passes, metrics, checkpoint round-trips, and dataset helpers. No GPU or real data required.
 
 ---
 
@@ -375,22 +363,15 @@ uv run pytest tests/ -v
 
 ### Inference
 
-```
+```text
 output/
-  cache/                          ← cached Cellpose masks (skipped on re-run)
+  cache/                          ← cached segmentation masks (skipped on re-run)
     masks+<file>.npy
     flows+<file>.pkl
   segmentation/
     <file>/
-      frame_0.png
-      frame_1.png
-      ...
+      frame_0.png  ...
   traces/
-    <file>/
-      traces_combined.png
-      neuron_1.png
-      neuron_2.png
-      ...
     traces+<file>.npy
 ```
 
@@ -399,22 +380,48 @@ output/
 ```
 checkpoints/
   jepa_pretrained_h1_<run_id>.pt
-  jepa_pretrained_h1_<run_id>.json   ← metadata: date, Dice, mIoU, hypothesis
+  jepa_pretrained_h1_<run_id>.json   ← metadata sidecar: date, Dice, mIoU
   jepa_h1_finetune_f10_<run_id>.pt
   ...
-mlruns/                              ← MLflow experiment store
+  logs/
+    runs.csv                         ← one row per training epoch
 ```
 
 ---
 
-## Tracking with MLflow
+## Experiment Logs
 
-Every training run is automatically logged. To open the MLflow UI:
+Every training epoch is appended to `<output_dir>/logs/runs.csv`. No external tracking server required.
 
-```bash
-uv run mlflow ui
+| Column | Description |
+| --- | --- |
+| `timestamp` | ISO-8601 datetime |
+| `run_id` | 8-char hex ID shared by all epochs of one run |
+| `hypothesis` | H1 / H2 / H3 |
+| `mode` | pretrain / finetune / supervised_baseline |
+| `model_name` | checkpoint filename stem |
+| `labeled_fraction` | fraction of labeled data used (finetune only) |
+| `epoch` | epoch index |
+| `train_loss` | training loss for this epoch |
+| `val_dice` | validation Dice score |
+| `val_miou` | validation mIoU |
+| `within_sim` | within-neuron cosine similarity (H3 only) |
+| `between_sim` | between-neuron cosine similarity (H3 only) |
+| `gap` | within − between gap (H3 only) |
+| `checkpoint` | absolute path to saved checkpoint (final row of each run) |
+
+To load results in Python:
+
+```python
+import pandas as pd
+
+df = pd.read_csv("output/demo_checkpoints/logs/runs.csv")
+
+# final val_dice per mode and fraction
+summary = (
+    df[df["mode"].isin(["finetune", "supervised_baseline"]) & df["val_dice"].notna()]
+    .groupby(["mode", "labeled_fraction"])["val_dice"]
+    .last()
+)
+print(summary)
 ```
-
-Then visit [http://localhost:5000](http://localhost:5000).
-
-Each run records: hyperparameters, per-epoch loss / Dice / mIoU, and the checkpoint artifact path.

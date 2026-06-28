@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-import mlflow
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,6 +11,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
 
 from neuroseg.checkpoint import save_checkpoint, save_compound_checkpoint
+from neuroseg.logger import RunLogger
 from neuroseg.metrics import dice, miou
 from neuroseg.models.state import State
 from neuroseg.trainers.dataset import (
@@ -110,8 +110,8 @@ def pretrain(
     cfg: H1Config,
     output_dir: Path,
     device: torch.device,
-    mlflow_experiment: str = "neuroseg-H1-pretrain",
-    base_tags: Optional[dict] = None,
+    model_name: str = "jepa_pretrained_h1",
+    log_path: Optional[Path] = None,
 ) -> Optional[Path]:
     dataset = _make_unlabeled_dataset(data_dir, cfg)
     if len(dataset) == 0:
@@ -141,59 +141,46 @@ def pretrain(
         {"params": pixel_decoder.head.parameters(), "lr": cfg.lr / 10},
     ])
 
-    tags = {"hypothesis": "H1", "mode": "pretrain"}
-    if base_tags:
-        tags.update(base_tags)
+    logger = RunLogger(
+        log_path or output_dir / "logs" / "runs.csv",
+        hypothesis="H1", mode="pretrain", model_name=model_name,
+    )
 
-    mlflow.set_experiment(mlflow_experiment)
-    with mlflow.start_run(tags=tags) as run:
-        mlflow.log_params({
-            "seq_len": cfg.seq_len, "img_size": cfg.img_size,
-            "batch_size": cfg.batch_size, "henc": cfg.henc, "hpre": cfg.hpre,
-            "dstc": cfg.dstc, "std_coeff": cfg.std_coeff, "cov_coeff": cfg.cov_coeff,
-            "lr": cfg.lr, "pretrain_epochs": cfg.pretrain_epochs, "steps": cfg.steps,
-        })
+    jepa.train()
+    pixel_decoder.train()
 
-        jepa.train()
-        pixel_decoder.train()
+    for epoch in range(cfg.pretrain_epochs):
+        epoch_jepa, epoch_recon, n_batches = 0.0, 0.0, 0
 
-        for epoch in range(cfg.pretrain_epochs):
-            epoch_jepa, epoch_recon, n_batches = 0.0, 0.0, 0
+        pbar = tqdm(train_loader, desc=f"[pretrain] Epoch {epoch}")
+        for batch in pbar:
+            x = batch["video"].to(device)
+            optimizer.zero_grad()
 
-            pbar = tqdm(train_loader, desc=f"[pretrain] Epoch {epoch}")
-            for batch in pbar:
-                x = batch["video"].to(device)
-                optimizer.zero_grad()
-
-                _, (jepa_loss, *_) = jepa.unroll(
-                    x, None, nsteps=cfg.steps, unroll_mode="parallel", compute_loss=True
-                )
-                recon_loss = pixel_decoder(x, x)
-                (jepa_loss + recon_loss).backward()
-                optimizer.step()
-
-                epoch_jepa += jepa_loss.item()
-                epoch_recon += recon_loss.item()
-                n_batches += 1
-                pbar.set_postfix(jepa=f"{jepa_loss.item():.4f}", recon=f"{recon_loss.item():.4f}")
-
-            val_metrics = _validate_pretrain(val_loader, jepa, pixel_decoder, cfg, device)
-            mlflow.log_metrics(
-                {"train/jepa_loss": epoch_jepa / n_batches,
-                 "train/recon_loss": epoch_recon / n_batches,
-                 **val_metrics},
-                step=epoch,
+            _, (jepa_loss, *_) = jepa.unroll(
+                x, None, nsteps=cfg.steps, unroll_mode="parallel", compute_loss=True
             )
+            recon_loss = pixel_decoder(x, x)
+            (jepa_loss + recon_loss).backward()
+            optimizer.step()
 
-        run_id = run.info.run_id
-        model_name = tags.get("model_name", "jepa_pretrained_h1")
-        checkpoint_path = save_checkpoint(
-            jepa, model_name=model_name, run_id=run_id,
-            output_dir=output_dir, metadata={**tags},
+            epoch_jepa += jepa_loss.item()
+            epoch_recon += recon_loss.item()
+            n_batches += 1
+            pbar.set_postfix(jepa=f"{jepa_loss.item():.4f}", recon=f"{recon_loss.item():.4f}")
+
+        val_metrics = _validate_pretrain(val_loader, jepa, pixel_decoder, cfg, device)
+        logger.log(
+            epoch=epoch,
+            train_loss=epoch_jepa / n_batches,
+            **val_metrics,
         )
-        mlflow.log_artifact(str(checkpoint_path))
-        print(f"Pretrained checkpoint: {checkpoint_path}")
 
+    checkpoint_path = save_checkpoint(
+        jepa, model_name=model_name, run_id=logger.run_id,
+        output_dir=output_dir, metadata={"hypothesis": "H1", "mode": "pretrain"},
+    )
+    print(f"Pretrained checkpoint: {checkpoint_path}")
     return checkpoint_path
 
 
@@ -227,17 +214,14 @@ def finetune(
     output_dir: Path,
     device: torch.device,
     mode: str,
-    mlflow_experiment: str = "neuroseg-H1-finetune",
-    base_tags: Optional[dict] = None,
+    model_name: Optional[str] = None,
+    log_path: Optional[Path] = None,
 ) -> dict:
     """
     Fine-tune or train a supervised baseline on labeled data.
 
     mode='finetune'            — loads pretrained JEPA weights first.
     mode='supervised_baseline' — random init, same architecture.
-
-    Supports both Neurofinder format (auto-detected) and the custom
-    video.tif + mask.tif layout.
     """
     labeled_path = Path(labeled_data_dir) if labeled_data_dir else Path("")
     if not labeled_path.exists():
@@ -271,59 +255,60 @@ def finetune(
     ])
     criterion = nn.BCELoss()
 
-    tags = {"hypothesis": "H1", "mode": mode, "labeled_fraction": str(fraction)}
-    if base_tags:
-        tags.update(base_tags)
-    model_name = tags.get("model_name", f"jepa_h1_{mode}_f{int(fraction * 100)}")
+    if model_name is None:
+        model_name = f"jepa_h1_{mode}_f{int(fraction * 100)}"
 
-    mlflow.set_experiment(mlflow_experiment)
-    with mlflow.start_run(tags=tags) as run:
-        mlflow.log_params({"labeled_fraction": fraction, "mode": mode,
-                           "finetune_epochs": cfg.finetune_epochs})
+    logger = RunLogger(
+        log_path or output_dir / "logs" / "runs.csv",
+        hypothesis="H1", mode=mode, model_name=model_name,
+        labeled_fraction=fraction,
+    )
 
-        jepa.train()
-        seg_head.train()
-        val_dice_score, val_miou_score = 0.0, 0.0
+    jepa.train()
+    seg_head.train()
+    val_dice_score, val_miou_score = 0.0, 0.0
 
-        for epoch in range(cfg.finetune_epochs):
-            epoch_loss, n_batches = 0.0, 0
+    for epoch in range(cfg.finetune_epochs):
+        epoch_loss, n_batches = 0.0, 0
 
-            for batch in tqdm(train_loader, desc=f"[{mode}] f={fraction} ep={epoch}"):
-                x = batch["video"].to(device)
-                mask_gt = batch["mask"].to(device)
+        for batch in tqdm(train_loader, desc=f"[{mode}] f={fraction} ep={epoch}"):
+            x = batch["video"].to(device)
+            mask_gt = batch["mask"].to(device)
 
-                enc_state = jepa.encoder(x)
-                enc_mean = enc_state.mean(dim=2)
-                pred = seg_head(enc_mean)
-                pred = nn.functional.interpolate(
-                    pred, size=mask_gt.shape[-2:], mode="bilinear", align_corners=False
-                )
-                loss = criterion(pred, mask_gt[:, 0:1].float())
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                epoch_loss += loss.item()
-                n_batches += 1
-
-            val_dice_score, val_miou_score = _validate_finetune(val_loader, jepa, seg_head, device)
-            mlflow.log_metrics(
-                {"train/loss": epoch_loss / max(n_batches, 1),
-                 "val/dice": val_dice_score, "val/miou": val_miou_score},
-                step=epoch,
+            enc_state = jepa.encoder(x)
+            enc_mean = enc_state.mean(dim=2)
+            pred = seg_head(enc_mean)
+            pred = nn.functional.interpolate(
+                pred, size=mask_gt.shape[-2:], mode="bilinear", align_corners=False
             )
+            loss = criterion(pred, mask_gt[:, 0:1].float())
 
-        run_id = run.info.run_id
-        checkpoint_path = save_compound_checkpoint(
-            models={"jepa": jepa, "seg_head": seg_head},
-            arch=cfg.arch_dict(),
-            model_name=model_name,
-            run_id=run_id,
-            output_dir=output_dir,
-            metadata={**tags, "dice": val_dice_score, "miou": val_miou_score},
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            epoch_loss += loss.item()
+            n_batches += 1
+
+        val_dice_score, val_miou_score = _validate_finetune(val_loader, jepa, seg_head, device)
+        logger.log(
+            epoch=epoch,
+            train_loss=epoch_loss / max(n_batches, 1),
+            val_dice=val_dice_score,
+            val_miou=val_miou_score,
         )
-        mlflow.log_artifact(str(checkpoint_path))
+
+    checkpoint_path = save_compound_checkpoint(
+        models={"jepa": jepa, "seg_head": seg_head},
+        arch=cfg.arch_dict(),
+        model_name=model_name,
+        run_id=logger.run_id,
+        output_dir=output_dir,
+        metadata={"hypothesis": "H1", "mode": mode, "labeled_fraction": fraction,
+                  "dice": val_dice_score, "miou": val_miou_score},
+    )
+    logger.log(val_dice=val_dice_score, val_miou=val_miou_score,
+               checkpoint=str(checkpoint_path))
 
     return {"dice": val_dice_score, "miou": val_miou_score}
 
@@ -366,27 +351,28 @@ def run_h1(state: State):
     data_dir = state["data_dir"]
     labeled_data_dir = state.get("config", {}).get("labeled_data_dir", "")
     fractions = state.get("config", {}).get("labeled_fractions", cfg.labeled_fractions)
+    log_path = output_dir / "logs" / "runs.csv"
 
     print(f"[H1] device={device} | data={data_dir} | output={output_dir}")
 
     pretrained_path = pretrain(
         data_dir, cfg, output_dir, device,
-        mlflow_experiment="neuroseg-H1-pretrain",
-        base_tags={"model_name": "jepa_pretrained_h1"},
+        model_name="jepa_pretrained_h1",
+        log_path=log_path,
     )
 
     for fraction in fractions:
         finetune(
             pretrained_path, labeled_data_dir, fraction, cfg, output_dir, device,
             mode="finetune",
-            mlflow_experiment="neuroseg-H1-finetune",
-            base_tags={"model_name": f"jepa_h1_finetune_f{int(fraction * 100)}"},
+            model_name=f"jepa_h1_finetune_f{int(fraction * 100)}",
+            log_path=log_path,
         )
         finetune(
             None, labeled_data_dir, fraction, cfg, output_dir, device,
             mode="supervised_baseline",
-            mlflow_experiment="neuroseg-H1-finetune",
-            base_tags={"model_name": f"jepa_h1_supervised_f{int(fraction * 100)}"},
+            model_name=f"jepa_h1_supervised_f{int(fraction * 100)}",
+            log_path=log_path,
         )
 
     print("[H1] Done.")
