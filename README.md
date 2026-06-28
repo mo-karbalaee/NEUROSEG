@@ -39,7 +39,7 @@ No GPU or real dataset required — `demo.sh` runs end-to-end on CPU in approxim
 ### One-command demo
 
 ```bash
-git clone https://github.com/MohammadKarbalaee/NEUROSEG.git
+git clone https://github.com/mo-karbalaee/NEUROSEG.git
 cd NEUROSEG
 uv sync
 bash demo.sh
@@ -100,7 +100,7 @@ The training pipeline runs one of three hypothesis-driven JEPA experiments (H1 /
 Uses [uv](https://docs.astral.sh/uv/) for reproducible environments:
 
 ```bash
-git clone https://github.com/MohammadKarbalaee/NEUROSEG.git
+git clone https://github.com/mo-karbalaee/NEUROSEG.git
 cd NEUROSEG
 uv sync
 uv run main.py --help
@@ -111,7 +111,7 @@ uv run main.py --help
 No clone required. Installs the `neuroseg` package and a `neuroseg` CLI command:
 
 ```bash
-pip install git+https://github.com/MohammadKarbalaee/NEUROSEG.git
+pip install git+https://github.com/mo-karbalaee/NEUROSEG.git
 neuroseg --help
 ```
 
@@ -137,7 +137,7 @@ run(
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu118
-pip install git+https://github.com/MohammadKarbalaee/NEUROSEG.git
+pip install git+https://github.com/mo-karbalaee/NEUROSEG.git
 ```
 
 ---

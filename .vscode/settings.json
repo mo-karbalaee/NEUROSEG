@@ -3,6 +3,7 @@
     "ckpt",
     "einops",
     "finetune",
+    "hyperparameters",
     "JEPA",
     "langgraph",
     "matplotlib",
@@ -17,8 +18,8 @@
     "pytest",
     "pyyaml",
     "scikit",
-    "setuptools",
     "scipy",
+    "setuptools",
     "tifffile",
     "tqdm",
     "zebrafish"
