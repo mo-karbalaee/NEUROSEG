@@ -60,6 +60,7 @@ class H1Config:
             "hpre": self.hpre,
             "dstc": self.dstc,
             "seg_head_hidden": self.seg_head_hidden,
+            "img_size": self.img_size,
         }
 
 
@@ -263,8 +264,9 @@ def finetune(
         jepa.load_state_dict(state_dict)
 
     seg_head = build_seg_head(cfg.dstc, cfg.seg_head_hidden).to(device)
+    encoder_lr = cfg.lr / 10 if mode == "finetune" else cfg.lr
     optimizer = Adam([
-        {"params": jepa.encoder.parameters(), "lr": cfg.lr / 10},
+        {"params": jepa.encoder.parameters(), "lr": encoder_lr},
         {"params": seg_head.parameters(), "lr": cfg.lr},
     ])
     criterion = nn.BCELoss()

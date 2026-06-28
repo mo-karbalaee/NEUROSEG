@@ -36,7 +36,10 @@ def _query_mlflow() -> dict | None:
             print("MLflow experiment 'neuroseg-H1-finetune' not found.")
             return None
 
-        runs = client.search_runs([exp.experiment_id])
+        runs = client.search_runs(
+            [exp.experiment_id],
+            order_by=["attribute.start_time ASC"],
+        )
         results: dict[str, dict[float, float]] = {
             "finetune": {},
             "supervised_baseline": {},

@@ -2,6 +2,7 @@ import pickle
 from pathlib import Path
 from typing import Optional
 
+import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -12,11 +13,21 @@ from neuroseg.models.state import State
 from neuroseg.trainers.jepa import build_jepa, build_seg_head
 
 
+def _filter_small_components(labeled: np.ndarray, min_size: int) -> np.ndarray:
+    sizes = np.bincount(labeled.ravel())
+    sizes[0] = 0
+    keep = sizes >= min_size
+    filtered = np.where(keep[labeled], labeled, 0)
+    relabeled, _ = connected_components(filtered > 0)
+    return relabeled
+
+
 def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     payload = load_compound_checkpoint(Path(checkpoint_path))
     arch = payload["arch"]
+    img_size = arch.get("img_size", 128)
 
     jepa = build_jepa(arch, device)
     jepa.load_state_dict(payload["jepa"])
@@ -25,6 +36,8 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
     seg_head = build_seg_head(arch["dstc"], arch.get("seg_head_hidden", 16)).to(device)
     seg_head.load_state_dict(payload["seg_head"])
     seg_head.eval()
+
+    min_size = max(9, (img_size * img_size) // 100)
 
     T = data.shape[0]
     masks = []
@@ -36,7 +49,9 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
                 frame = frame[:, :, 0]
             H, W = frame.shape
 
-            x = torch.from_numpy(frame).float()
+            frame_resized = cv2.resize(frame.astype(np.float32), (img_size, img_size),
+                                       interpolation=cv2.INTER_LINEAR)
+            x = torch.from_numpy(frame_resized).float()
             x = x.unsqueeze(0).unsqueeze(0).unsqueeze(0).to(device)
 
             enc_state = jepa.encoder(x)
@@ -45,7 +60,7 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
             pred = F.interpolate(pred, size=(H, W), mode="bilinear", align_corners=False)
             binary = (pred.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
 
-            labeled, _ = connected_components(binary)
+            labeled = _filter_small_components(connected_components(binary)[0], min_size)
             masks.append(labeled)
 
     return masks, None
