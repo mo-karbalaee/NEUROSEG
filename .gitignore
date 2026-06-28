@@ -189,3 +189,5 @@ data/**/*.avi
 notebooks/.ipynb_checkpoints/
 
 data/
+
+samples/

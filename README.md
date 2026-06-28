@@ -82,7 +82,7 @@ NEUROSEG has two top-level modes:
 | **Inference** | Directory of TIFF stacks | Segmentation masks, activity traces, plots |
 | **Training** | Directory of TIFF stacks | JEPA model checkpoint, MLflow experiment logs |
 
-The inference pipeline runs: **load → normalise → segment (Cellpose) → extract ΔF/F₀ traces → visualise**.  
+The inference pipeline runs: **load → normalize → segment (Cellpose) → extract ΔF/F₀ traces → visualize**.  
 The training pipeline runs one of three hypothesis-driven JEPA experiments (H1 / H2 / H3).
 
 ---
