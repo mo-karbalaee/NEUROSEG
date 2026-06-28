@@ -10,7 +10,7 @@ seg_head_hidden: 4
 
 # ── Data ──────────────────────────────────────────────────────────────────────
 seq_len: 5
-img_size: 64
+img_size: 128
 batch_size: 4
 num_workers: 0        # avoids multiprocessing issues in demo environments
 val_split: 0.2
@@ -24,4 +24,5 @@ finetune_epochs: 3
 
 # ── H1 specific ───────────────────────────────────────────────────────────────
 labeled_data_dir: data/demo
+
 labeled_fractions: [0.1, 0.5, 1.0]

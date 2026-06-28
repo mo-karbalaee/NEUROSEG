@@ -5,8 +5,10 @@
 # Usage:
 #   bash demo.sh
 #
+# Requires: data/neurofinder.00.00/ (download from the Neurofinder benchmark).
+#
 # What it does (4 steps):
-#   1. Generate synthetic Neurofinder-format data (no download needed).
+#   1. Prepare a 100-frame subset of neurofinder.00.00 as the demo dataset.
 #   2. Train JEPA on that data (H1 — pretrain + finetune, scaled to ~10 min on CPU).
 #   3. Run inference on a stacked TIFF and write segmentation output.
 #   4. Produce two result figures from the training and inference outputs.
@@ -21,16 +23,14 @@ CHECKPOINTS_DIR="output/demo_checkpoints"
 INFERENCE_DIR="output/demo_inference"
 FIGURES_DIR="output/figures"
 
-# ── Step 1: Generate data ──────────────────────────────────────────────────────
+# ── Step 1: Prepare real data subset ──────────────────────────────────────────
 echo ""
-echo "── Step 1/4  Generating synthetic demo dataset ──────────────────────────"
-uv run python scripts/generate_demo_data.py \
+echo "── Step 1/4  Preparing demo dataset (neurofinder.00.00, 100 frames) ─────"
+uv run python scripts/prepare_demo_data.py \
+    --source data/neurofinder.00.00 \
     --out data/demo \
     --stack-out data/demo_stacks \
-    --frames 100 \
-    --size 64 \
-    --neurons 5 \
-    --seed 42
+    --frames 100
 
 # ── Step 2: Train (H1, scaled-down config) ────────────────────────────────────
 echo ""

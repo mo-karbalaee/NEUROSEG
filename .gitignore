@@ -187,3 +187,5 @@ data/**/*.avi
 
 # Jupyter notebook outputs (outputs are reproducible, diffs are noisy)
 notebooks/.ipynb_checkpoints/
+
+data/

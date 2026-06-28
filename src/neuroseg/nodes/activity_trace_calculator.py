@@ -7,7 +7,7 @@ from neuroseg.models.state import State
 
 def _extract_traces(masks: list, data: np.ndarray) -> np.ndarray:
     T = data.shape[0]
-    if not masks:
+    if masks is None or len(masks) == 0:
         return np.zeros((0, T))
     reference_idx = int(np.argmax([np.max(m) for m in masks]))
     reference_mask = masks[reference_idx]

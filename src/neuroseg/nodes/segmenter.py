@@ -79,17 +79,17 @@ def _load_results(output_dir: str, file_name: str, model_key: str) -> tuple:
     return masks, flows
 
 
-def _model_key(checkpoint_path: Optional[str]) -> str:
-    if checkpoint_path is None:
-        return "cellpose"
-    return "jepa_" + Path(checkpoint_path).stem
+def _model_key(checkpoint_path: Optional[str], h: int, w: int) -> str:
+    base = "cellpose" if checkpoint_path is None else "jepa_" + Path(checkpoint_path).stem
+    return f"{base}_{h}x{w}"
 
 
 def segmenter_node(state: State) -> dict:
     file_name = state["file_name"]
     output_dir = state["output_dir"]
     checkpoint_path = state.get("checkpoint_path")
-    key = _model_key(checkpoint_path)
+    _, h, w = state["data"].shape[0], state["data"].shape[1], state["data"].shape[2]
+    key = _model_key(checkpoint_path, h, w)
     cache_file = _cache_root(output_dir, key) / f"masks+{file_name}.npy"
 
     if cache_file.exists():
