@@ -56,18 +56,27 @@ bash demo.sh
 | 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune + supervised baseline at 3 labeled-data fractions |
 | 3 | `main.py --mode train --H2 --config config.demo.yaml` | same checkpoint dir — cross-domain pretrain + target finetune + supervised baseline |
 | 4 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
-| 5 | `scripts/plot_results.py` | `output/figures/` — three result figures |
+| 5 | `scripts/plot_results.py` | `output/figures/` — result figures (Dice + mIoU comparisons, segmentation preview) |
 
 ### Result figures
 
-**Figure 1 — `output/figures/h1_dice_comparison.png`**  
-Grouped bar chart: Dice score vs labeled-data fraction (10 %, 50 %, 100 %) comparing JEPA-pretrained fine-tuning against a supervised baseline trained from scratch.
+**`output/figures/h1_dice_comparison.png`**  
+Grouped bar chart: Dice score vs labeled-data fraction (10 %, 50 %, 100 %) comparing JEPA-pretrained fine-tuning against a supervised baseline. Scores are from the held-out **test set**.
 
-**Figure 2 — `output/figures/h2_dice_comparison.png`**  
-Bar chart: Dice score on the target domain comparing JEPA pretrained transfer against a supervised baseline trained from scratch on the target domain.
+**`output/figures/h1_miou_comparison.png`**  
+Same layout as above, showing mIoU instead of Dice.
 
-**Figure 3 — `output/figures/segmentation_preview.png`**  
+**`output/figures/h2_dice_comparison.png`**  
+Bar chart: Dice score on the target organism comparing JEPA pretrained transfer against a supervised baseline trained from scratch on the target domain. Scores are from the held-out **test set**.
+
+**`output/figures/h2_miou_comparison.png`**  
+Same layout as above, showing mIoU instead of Dice.
+
+**`output/figures/segmentation_preview.png`**  
 Side-by-side comparison of a raw calcium imaging frame and the predicted neuron segmentation overlay from the inference run.
+
+**`output/demo_checkpoints/figures/`**  
+Per-run training curves generated automatically during training. Each fine-tune run produces a 2×2 figure (train loss, val Dice, val mIoU, final test-set bar); each pretrain run produces a 1×2 figure (JEPA loss and reconstruction loss).
 
 ### Inspect training logs
 
@@ -75,7 +84,7 @@ Side-by-side comparison of a raw calcium imaging frame and the predicted neuron 
 cat output/demo_checkpoints/logs/runs.csv
 ```
 
-Each row is one training epoch. Columns: `timestamp`, `run_id`, `hypothesis`, `mode`, `model_name`, `labeled_fraction`, `epoch`, `train_loss`, `val_dice`, `val_miou`, `checkpoint`.
+Each row is one training epoch or a final checkpoint summary row. Key columns: `run_id`, `hypothesis`, `mode`, `epoch`, `train_loss`, `val_dice`, `val_miou`, `test_dice`, `test_miou`, `checkpoint`. See the [Experiment Logs](#experiment-logs) section for the full column reference.
 
 ---
 
@@ -387,11 +396,14 @@ output/
 ```
 checkpoints/
   jepa_pretrained_h1_<run_id>.pt
-  jepa_pretrained_h1_<run_id>.json   ← metadata sidecar: date, Dice, mIoU
+  jepa_pretrained_h1_<run_id>.json   ← metadata sidecar: date, test Dice, test mIoU
   jepa_h1_finetune_f10_<run_id>.pt
   ...
   logs/
-    runs.csv                         ← one row per training epoch
+    runs.csv                         ← one row per epoch + one checkpoint summary row per run
+  figures/
+    pretrain_<model>_curves.png      ← JEPA loss and reconstruction loss over epochs
+    finetune_<model>_curves.png      ← train loss, val Dice, val mIoU, final test scores
 ```
 
 ---
@@ -400,22 +412,32 @@ checkpoints/
 
 Every training epoch is appended to `<output_dir>/logs/runs.csv`. No external tracking server required.
 
+Each run produces two kinds of rows:
+
+- **Epoch rows** — one per training epoch; `epoch` is filled, `checkpoint` is empty.
+- **Checkpoint row** — one row at the end of the run; `epoch` is empty, `checkpoint` is filled with the path, and `test_dice` / `test_miou` hold the final held-out **test set** scores.
+
 | Column | Description |
 | --- | --- |
 | `timestamp` | ISO-8601 datetime |
-| `run_id` | 8-char hex ID shared by all epochs of one run |
+| `run_id` | 8-char hex ID shared by all rows of one run |
 | `hypothesis` | H1 / H2 / H3 |
 | `mode` | pretrain / finetune / supervised_baseline |
 | `model_name` | checkpoint filename stem |
 | `labeled_fraction` | fraction of labeled data used (finetune only) |
-| `epoch` | epoch index |
-| `train_loss` | training loss for this epoch |
-| `val_dice` | validation Dice score |
-| `val_miou` | validation mIoU |
+| `epoch` | epoch index (empty on checkpoint row) |
+| `train_loss` | JEPA loss for this epoch |
+| `train_recon_loss` | reconstruction loss for this epoch (pretrain only) |
+| `val_jepa_loss` | validation JEPA loss (pretrain only) |
+| `val_recon_loss` | validation reconstruction loss (pretrain only) |
+| `val_dice` | validation Dice score per epoch |
+| `val_miou` | validation mIoU per epoch |
+| `test_dice` | **test-set** Dice score — checkpoint row only |
+| `test_miou` | **test-set** mIoU — checkpoint row only |
 | `within_sim` | within-neuron cosine similarity (H3 only) |
 | `between_sim` | between-neuron cosine similarity (H3 only) |
 | `gap` | within − between gap (H3 only) |
-| `checkpoint` | absolute path to saved checkpoint (final row of each run) |
+| `checkpoint` | path to saved checkpoint (checkpoint row only) |
 
 To load results in Python:
 
@@ -424,10 +446,10 @@ import pandas as pd
 
 df = pd.read_csv("output/demo_checkpoints/logs/runs.csv")
 
-# final val_dice per mode and fraction
+# test-set scores per mode and fraction (checkpoint rows only)
 summary = (
-    df[df["mode"].isin(["finetune", "supervised_baseline"]) & df["val_dice"].notna()]
-    .groupby(["mode", "labeled_fraction"])["val_dice"]
+    df[df["checkpoint"].ne("") & df["mode"].isin(["finetune", "supervised_baseline"])]
+    .groupby(["mode", "labeled_fraction"])[["test_dice", "test_miou"]]
     .last()
 )
 print(summary)
