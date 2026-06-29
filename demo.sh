@@ -33,7 +33,9 @@ uv run python scripts/prepare_demo_data.py \
     --source data/neurofinder.00.00 \
     --out data/demo \
     --stack-out data/demo_stacks \
-    --frames 100
+    --frames 100 \
+    --h2-source data/neurofinder.04.00 \
+    --h2-source-out data/demo_h2_source
 
 # ── Step 2: Train H1 (pretrain + finetune) ────────────────────────────────────
 echo ""

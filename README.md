@@ -34,7 +34,10 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 
 - Python ≥ 3.10, < 3.14
 - [uv](https://docs.astral.sh/uv/) (`pip install uv`)
-- `data/neurofinder.00.00/` — download the `neurofinder.00.00` training set from the [Neurofinder benchmark](https://github.com/codeneuro/neurofinder) and place it at this path
+- `data/neurofinder.00.00/` — mouse visual cortex training set (H1 + H2 target)
+- `data/neurofinder.04.00/` — zebrafish training set (H2 source)
+
+Both are available from the [Neurofinder benchmark](https://github.com/codeneuro/neurofinder).
 
 ### One-command demo
 
@@ -49,13 +52,11 @@ bash demo.sh
 
 | Step | What runs | Output |
 | ---- | --------- | ------ |
-| 1 | `scripts/prepare_demo_data.py` | `data/demo/` — first 100 frames of `neurofinder.00.00`; also creates 70/30 temporal splits for H2 |
+| 1 | `scripts/prepare_demo_data.py` | `data/demo/` — first 100 frames of `neurofinder.00.00` (mouse); `data/demo_h2_source/` — first 100 frames of `neurofinder.04.00` (zebrafish) |
 | 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune + supervised baseline at 3 labeled-data fractions |
 | 3 | `main.py --mode train --H2 --config config.demo.yaml` | same checkpoint dir — cross-domain pretrain + target finetune + supervised baseline |
 | 4 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
 | 5 | `scripts/plot_results.py` | `output/figures/` — three result figures |
-
-> **H2 demo note:** The demo uses a temporal split of `neurofinder.00.00` (frames 0–69 as source, 70–99 as target) as a proxy for cross-domain transfer. For a scientifically valid H2 run, replace `source_data_dir` / `target_data_dir` in your config with two different organism datasets (e.g. `neurofinder.04.00` for zebrafish and `neurofinder.00.00` for mouse).
 
 ### Result figures
 

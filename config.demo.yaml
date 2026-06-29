@@ -28,8 +28,8 @@ labeled_data_dir: data/demo
 labeled_fractions: [0.1, 0.5, 1.0]
 
 # ── H2 specific ───────────────────────────────────────────────────────────────
-# Demo uses a temporal split of neurofinder.00.00 as a proxy for cross-domain
-# transfer.  For a real H2 run replace these with two different organism dirs.
+# source: zebrafish (neurofinder.04.00 subset) — pretrain domain
+# target: mouse visual cortex (data/demo, same as H1) — transfer domain
 source_data_dir: data/demo_h2_source
-target_data_dir: data/demo_h2_target
+target_data_dir: data/demo
 finetune_budget: 3

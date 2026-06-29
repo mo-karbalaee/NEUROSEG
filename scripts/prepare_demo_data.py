@@ -40,58 +40,52 @@ def prepare(
     print(f"  Stacked TIFF    : {stack_dir / 'demo.tif'}")
 
 
-def prepare_h2(
-    source_dir: Path,
-    h2_source_out: Path,
-    h2_target_out: Path,
+def prepare_h2_source(
+    zebrafish_dir: Path,
+    out_dir: Path,
     n_frames: int,
-    source_frac: float = 0.7,
 ) -> None:
-    src_images = source_dir / "images"
-    src_regions = source_dir / "regions" / "regions.json"
+    src_images = zebrafish_dir / "images"
+    src_regions = zebrafish_dir / "regions" / "regions.json"
 
-    all_frames = sorted(src_images.glob("*.tiff")) + sorted(src_images.glob("*.tif"))
-    all_frames = all_frames[:n_frames]
-    if not all_frames:
+    frame_paths = sorted(src_images.glob("*.tiff")) + sorted(src_images.glob("*.tif"))
+    frame_paths = frame_paths[:n_frames]
+    if not frame_paths:
         raise FileNotFoundError(f"No TIFF frames found in {src_images}")
 
-    n_source = max(1, int(len(all_frames) * source_frac))
-    splits = [
-        ("source", all_frames[:n_source], h2_source_out),
-        ("target", all_frames[n_source:], h2_target_out),
-    ]
+    out_images = out_dir / "images"
+    out_images.mkdir(parents=True, exist_ok=True)
+    for i, p in enumerate(frame_paths):
+        shutil.copy2(p, out_images / f"image{i:05d}.tiff")
 
-    for label, frames, out_dir in splits:
-        out_images = out_dir / "images"
-        out_images.mkdir(parents=True, exist_ok=True)
-        for i, p in enumerate(frames):
-            shutil.copy2(p, out_images / f"image{i:05d}.tiff")
-        out_regions = out_dir / "regions"
-        out_regions.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src_regions, out_regions / "regions.json")
-        print(f"H2 {label}: {len(frames)} frames → {out_dir}")
+    out_regions = out_dir / "regions"
+    out_regions.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src_regions, out_regions / "regions.json")
+
+    print(f"H2 source (zebrafish): {len(frame_paths)} frames from {zebrafish_dir.name} → {out_dir}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Prepare a real-data demo subset from a Neurofinder dataset."
+        description="Prepare real-data demo subsets from Neurofinder datasets."
     )
     parser.add_argument("--source", type=Path, default=Path("data/neurofinder.00.00"),
-                        metavar="DIR", help="Source Neurofinder directory.")
+                        metavar="DIR", help="Mouse dataset (neurofinder.00.00) for H1 and H2 target.")
     parser.add_argument("--out", type=Path, default=Path("data/demo"),
-                        metavar="DIR", help="Output Neurofinder-format directory (H1).")
+                        metavar="DIR", help="Output Neurofinder-format directory (H1 / H2 target).")
     parser.add_argument("--stack-out", type=Path, default=Path("data/demo_stacks"),
                         metavar="DIR", help="Output directory for stacked TIFF (inference).")
     parser.add_argument("--frames", type=int, default=100,
-                        help="Number of frames to use (default: 100).")
+                        help="Number of frames to use per dataset (default: 100).")
+    parser.add_argument("--h2-source", type=Path, default=Path("data/neurofinder.04.00"),
+                        metavar="DIR", help="Zebrafish dataset (neurofinder.04.00) for H2 source.")
     parser.add_argument("--h2-source-out", type=Path, default=Path("data/demo_h2_source"),
-                        metavar="DIR", help="H2 source split output directory.")
-    parser.add_argument("--h2-target-out", type=Path, default=Path("data/demo_h2_target"),
-                        metavar="DIR", help="H2 target split output directory.")
+                        metavar="DIR", help="H2 zebrafish source output directory.")
     args = parser.parse_args()
 
     prepare(args.source, args.out, args.stack_out, args.frames)
-    prepare_h2(args.source, args.h2_source_out, args.h2_target_out, args.frames)
+    prepare_h2_source(args.h2_source, args.h2_source_out, args.frames)
+    print(f"H2 target (mouse)   : reusing {args.out}")
 
 
 if __name__ == "__main__":
