@@ -14,6 +14,7 @@ from neuroseg.trainers.jepa import build_jepa, build_seg_head
 
 
 def _filter_small_components(labeled: np.ndarray, min_size: int) -> np.ndarray:
+    """Remove connected components smaller than min_size and relabel the remaining ones."""
     sizes = np.bincount(labeled.ravel())
     sizes[0] = 0
     keep = sizes >= min_size
@@ -23,6 +24,7 @@ def _filter_small_components(labeled: np.ndarray, min_size: int) -> np.ndarray:
 
 
 def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
+    """Run frame-by-frame segmentation using a loaded JEPA encoder and seg head."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     payload = load_compound_checkpoint(Path(checkpoint_path))
@@ -68,6 +70,7 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
 
 
 def _cellpose_segment(data: np.ndarray) -> tuple[list, list]:
+    """Segment all frames using the Cellpose baseline model."""
     from cellpose import models
     model = models.CellposeModel(gpu=True)
     frames = [data[i] for i in range(data.shape[0])]
@@ -76,10 +79,12 @@ def _cellpose_segment(data: np.ndarray) -> tuple[list, list]:
 
 
 def _cache_root(output_dir: str, model_key: str) -> Path:
+    """Return the cache directory path for a given model key."""
     return Path(output_dir) / "cache" / model_key
 
 
 def _save_results(masks, flows: Optional[list], output_dir: str, file_name: str, model_key: str):
+    """Persist segmentation masks and flows to the on-disk cache."""
     cache_dir = _cache_root(output_dir, model_key)
     cache_dir.mkdir(parents=True, exist_ok=True)
     np.save(str(cache_dir / f"masks+{file_name}.npy"), masks)
@@ -88,6 +93,7 @@ def _save_results(masks, flows: Optional[list], output_dir: str, file_name: str,
 
 
 def _load_results(output_dir: str, file_name: str, model_key: str) -> tuple:
+    """Load previously cached masks and flows from disk."""
     cache_dir = _cache_root(output_dir, model_key)
     masks = np.load(str(cache_dir / f"masks+{file_name}.npy"), allow_pickle=True)
     with open(cache_dir / f"flows+{file_name}.pkl", "rb") as f:
@@ -96,11 +102,13 @@ def _load_results(output_dir: str, file_name: str, model_key: str) -> tuple:
 
 
 def _model_key(checkpoint_path: Optional[str], h: int, w: int) -> str:
+    """Build a cache key that encodes the model and frame resolution."""
     base = "cellpose" if checkpoint_path is None else "jepa_" + Path(checkpoint_path).stem
     return f"{base}_{h}x{w}"
 
 
 def segmenter_node(state: State) -> dict:
+    """Segment the current frame stack, using the cache when available."""
     file_name = state["file_name"]
     output_dir = state["output_dir"]
     checkpoint_path = state.get("checkpoint_path")

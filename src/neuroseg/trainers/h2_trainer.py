@@ -17,6 +17,7 @@ _NF_ORGANISM_MAP = {
 
 
 def _infer_organism(data_dir: str) -> str:
+    """Infer the organism label from Neurofinder dataset IDs found under data_dir."""
     nf_dirs = find_neurofinder_dirs(data_dir)
     if not nf_dirs:
         return Path(data_dir).name
@@ -30,6 +31,7 @@ def _infer_organism(data_dir: str) -> str:
 
 
 def _build_h2_config(state: State) -> H1Config:
+    """Build an H1Config for H2, applying H2-specific epoch overrides from state config."""
     cfg = build_config(state)
     extra = state.get("config", {})
     cfg.pretrain_epochs = extra.get("pretrain_epochs", cfg.pretrain_epochs)

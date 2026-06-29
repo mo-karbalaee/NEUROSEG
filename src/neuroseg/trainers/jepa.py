@@ -6,6 +6,7 @@ from sklearn.metrics import average_precision_score
 
 
 def init_module_weights(m, std: float = 0.02):
+    """Initialize weights of Conv/Linear layers with truncated normal and zero bias."""
     if isinstance(m, (nn.Conv2d, nn.Conv3d, nn.ConvTranspose2d, nn.ConvTranspose3d, nn.Linear)):
         nn.init.trunc_normal_(m.weight, std=std)
         if m.bias is not None:
@@ -14,9 +15,11 @@ def init_module_weights(m, std: float = 0.02):
 
 class TemporalBatchMixin:
     def _forward(self, x):
+        """Process a single 4-D (B×C×H×W) tensor; must be overridden by subclasses."""
         raise NotImplementedError
 
     def forward(self, x):
+        """Flatten the time dimension into batch for 5-D inputs, then call _forward."""
         assert x.ndim in [4, 5], "Only 4D or 5D tensors supported"
         if x.ndim == 5:
             b = x.shape[0]
@@ -43,6 +46,7 @@ class ResidualBlock(nn.Module):
             )
 
     def forward(self, x):
+        """Apply two conv layers with BN+ReLU and add the shortcut connection."""
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += self.shortcut(x)
@@ -62,6 +66,7 @@ class ResNet5(TemporalBatchMixin, nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) if avg_pool else nn.Identity()
 
     def _forward(self, x):
+        """Run the 5-layer ResNet forward pass on a single 4-D tensor."""
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
@@ -95,11 +100,13 @@ class ResUNet(TemporalBatchMixin, nn.Module):
 
     @staticmethod
     def _match_size(x, ref):
+        """Resize x with bilinear interpolation to match ref's spatial dimensions if they differ."""
         if x.shape[-2:] != ref.shape[-2:]:
             x = F.interpolate(x, size=ref.shape[-2:], mode="bilinear", align_corners=False)
         return x
 
     def _forward(self, x):
+        """Run the U-Net encoder-decoder forward pass on a single 4-D tensor."""
         x0 = self.relu(self.bn1(self.conv1(x)))
         s1 = self.enc1(x0)
         s2 = self.enc2(s1)
@@ -123,6 +130,7 @@ class StateOnlyPredictor(nn.Module):
         self.context_length = context_length
 
     def forward(self, x, a=None):
+        """Predict the next latent state from consecutive state pairs, ignoring actions."""
         prev_state = x[:, :, :-1]
         next_state = x[:, :, 1:]
         combined = torch.cat((prev_state, next_state), dim=1)
@@ -141,6 +149,7 @@ class Projector(nn.Module):
         self.out_dim = f[-1]
 
     def forward(self, x):
+        """Project x through the MLP stack."""
         return self.net(x)
 
 
@@ -155,6 +164,7 @@ class ImageDecoder(TemporalBatchMixin, nn.Module):
         self.apply(init_module_weights)
 
     def _forward(self, x):
+        """Decode a feature map back to pixel space."""
         return self.net(x)
 
 
@@ -180,6 +190,7 @@ class SomaDetHead(nn.Module):
         self.apply(init_module_weights)
 
     def forward(self, x):
+        """Pool spatial features to map_size and predict a per-frame soma detection map."""
         x = [
             F.adaptive_avg_pool2d(x[:, :, t], (self.map_size, self.map_size))
             for t in range(x.shape[2])
@@ -190,6 +201,7 @@ class SomaDetHead(nn.Module):
 
     @torch.no_grad()
     def score(self, preds, targets):
+        """Compute per-timestep average precision scores for soma detection."""
         scores = []
         for T in range(len(preds) - 1):
             x = preds[T]
@@ -219,6 +231,7 @@ class HingeStdLoss(nn.Module):
         self.std_margin = std_margin
 
     def forward(self, x):
+        """Penalize dimensions whose std falls below std_margin."""
         x = x - x.mean(dim=0, keepdim=True)
         std = torch.sqrt(x.var(dim=0) + 0.0001)
         return torch.mean(F.relu(self.std_margin - std))
@@ -226,11 +239,13 @@ class HingeStdLoss(nn.Module):
 
 class CovarianceLoss(nn.Module):
     def off_diagonal(self, x):
+        """Return all off-diagonal elements of a square matrix as a flat vector."""
         n, m = x.shape
         assert n == m
         return x.flatten()[:-1].view(n - 1, n + 1)[:, 1:].flatten()
 
     def forward(self, x):
+        """Penalize redundant off-diagonal covariance between feature dimensions."""
         batch_size = x.shape[0]
         x = x - x.mean(dim=0, keepdim=True)
         cov = (x.T @ x) / (batch_size - 1)
@@ -247,6 +262,7 @@ class VCLoss(nn.Module):
         self.cov_loss_fn = CovarianceLoss()
 
     def forward(self, x, actions=None):
+        """Compute the combined variance and covariance regularization loss."""
         x = x.transpose(0, 1).flatten(1).transpose(0, 1)
         fx = self.proj(x)
         std_loss = self.std_loss_fn(fx)
@@ -263,6 +279,7 @@ class SquareLossSeq(nn.Module):
         self.proj = nn.Identity() if proj is None else proj
 
     def forward(self, state, predi):
+        """Compute MSE between projected target states and predicted states."""
         state = self.proj(state.transpose(0, 1).flatten(1).transpose(0, 1))
         predi = self.proj(predi.transpose(0, 1).flatten(1).transpose(0, 1))
         return F.mse_loss(state, predi)
@@ -288,6 +305,7 @@ class JEPA(nn.Module):
         compute_loss=True,
         return_all_steps=False,
     ):
+        """Encode observations and roll out the predictor for nsteps in parallel or autoregressive mode."""
         state = self.encoder(observations)
         context_length = getattr(self.predictor, "context_length", 0)
 
@@ -343,6 +361,7 @@ class JEPA(nn.Module):
 
 
 def build_jepa(arch: dict, device: torch.device) -> "JEPA":
+    """Construct and return a JEPA model from an arch config dict."""
     dobs = arch.get("dobs", 1)
     henc = arch.get("henc", 32)
     hpre = arch.get("hpre", 32)
@@ -362,6 +381,7 @@ def build_jepa(arch: dict, device: torch.device) -> "JEPA":
 
 
 def build_seg_head(dstc: int, hidden: int = 16) -> nn.Sequential:
+    """Build a lightweight conv segmentation head that maps encoder features to a binary mask."""
     return nn.Sequential(
         nn.Conv2d(dstc, hidden, 3, padding=1),
         nn.ReLU(),
@@ -378,6 +398,7 @@ class JEPAProbe(nn.Module):
         self.hcost = hcost
 
     def forward(self, observations, targets):
+        """Encode observations with a frozen JEPA encoder and compute head loss against targets."""
         with torch.no_grad():
             state = self.jepa.encoder(observations)
         output = self.head(state.detach())

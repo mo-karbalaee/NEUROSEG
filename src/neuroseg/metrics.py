@@ -2,6 +2,7 @@ import numpy as np
 
 
 def dice(pred: np.ndarray, gt: np.ndarray) -> float:
+    """Compute the Dice coefficient between a binary prediction and ground-truth mask."""
     pred = pred.astype(bool)
     gt = gt.astype(bool)
     denom = pred.sum() + gt.sum()
@@ -11,6 +12,7 @@ def dice(pred: np.ndarray, gt: np.ndarray) -> float:
 
 
 def miou(pred: np.ndarray, gt: np.ndarray, num_classes: int = 2) -> float:
+    """Compute mean IoU over all classes between a predicted and ground-truth label map."""
     ious = []
     for c in range(num_classes):
         p = pred == c

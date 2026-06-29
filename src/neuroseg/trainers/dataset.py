@@ -14,6 +14,7 @@ from torch.utils.data import Dataset
 # ---------------------------------------------------------------------------
 
 def _load_tiff(path: str) -> np.ndarray:
+    """Read a TIFF file and return a float32 array with shape (T, H, W)."""
     data = tiff.imread(path)
     if data.ndim == 2:
         data = data[np.newaxis]
@@ -23,11 +24,13 @@ def _load_tiff(path: str) -> np.ndarray:
 
 
 def _normalize(data: np.ndarray) -> np.ndarray:
+    """Min-max normalize an array to [0, 1]."""
     mn, mx = float(data.min()), float(data.max())
     return (data - mn) / (mx - mn + 1e-8)
 
 
 def _resize_frames(frames: np.ndarray, img_size: int, interpolation: int) -> np.ndarray:
+    """Resize every frame in a (T, H, W) array to (img_size, img_size)."""
     return np.stack([
         cv2.resize(frames[t], (img_size, img_size), interpolation=interpolation)
         for t in range(frames.shape[0])
@@ -39,10 +42,12 @@ def _resize_frames(frames: np.ndarray, img_size: int, interpolation: int) -> np.
 # ---------------------------------------------------------------------------
 
 def is_neurofinder_dir(path: str | Path) -> bool:
+    """Return True if path is a Neurofinder directory (contains an images/ subdirectory)."""
     return (Path(path) / "images").is_dir()
 
 
 def find_neurofinder_dirs(data_dir: str | Path) -> list[Path]:
+    """Return all Neurofinder dataset directories at or under data_dir."""
     root = Path(data_dir)
     if is_neurofinder_dir(root):
         return [root]
@@ -54,6 +59,7 @@ def find_neurofinder_dirs(data_dir: str | Path) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 def _load_nf_video(nf_dir: Path) -> np.ndarray:
+    """Load all TIFF frames from a Neurofinder images/ directory into a single array."""
     img_dir = nf_dir / "images"
     paths = sorted(img_dir.glob("*.tiff")) or sorted(img_dir.glob("*.tif"))
     frames = []
@@ -115,9 +121,11 @@ class TIFFVideoDataset(Dataset):
                     self.clips.append(video[start : start + seq_len])
 
     def __len__(self) -> int:
+        """Return the number of temporal clips in the dataset."""
         return len(self.clips)
 
     def __getitem__(self, idx: int) -> dict:
+        """Return a dict with a 'video' tensor of shape (1, seq_len, H, W)."""
         clip = self.clips[idx]
         if clip.shape[-1] != self.img_size or clip.shape[-2] != self.img_size:
             clip = _resize_frames(clip, self.img_size, cv2.INTER_LINEAR)
@@ -164,9 +172,11 @@ class LabeledTIFFDataset(Dataset):
         self.samples = [samples[i] for i in sorted(chosen)]
 
     def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> dict:
+        """Return a dict with 'video' and 'mask' tensors for the given sample."""
         sample_dir = self.samples[idx]
         video = _normalize(_load_tiff(str(sample_dir / "video.tif")))
         mask = _load_tiff(str(sample_dir / "mask.tif"))
@@ -268,9 +278,11 @@ class NeurofinderDataset(Dataset):
             self.clips = [self.clips[i] for i in sorted(idx)]
 
     def __len__(self) -> int:
+        """Return the number of temporal clips across all loaded Neurofinder datasets."""
         return len(self.clips)
 
     def __getitem__(self, idx: int) -> dict:
+        """Return a dict with 'video' and optionally 'mask' tensors for the given clip."""
         clip, mask = self.clips[idx]
         video_t = torch.from_numpy(clip).unsqueeze(0).float()
 

@@ -3,6 +3,7 @@ from pathlib import Path
 
 
 def _safe_float(s: str) -> float | None:
+    """Convert a string to float, returning None if the conversion fails."""
     try:
         return float(s)
     except (ValueError, TypeError):
@@ -10,6 +11,7 @@ def _safe_float(s: str) -> float | None:
 
 
 def _read_h1_results(log_path: Path) -> dict | None:
+    """Parse the runs CSV and return per-mode, per-fraction Dice/mIoU for H1."""
     if not log_path.exists():
         return None
     results: dict[str, dict[float, dict[str, float]]] = {"finetune": {}, "supervised_baseline": {}}
@@ -33,6 +35,7 @@ def _read_h1_results(log_path: Path) -> dict | None:
 
 
 def _read_h2_results(log_path: Path) -> dict | None:
+    """Parse the runs CSV and return per-mode Dice/mIoU scores for H2."""
     if not log_path.exists():
         return None
     results: dict[str, dict[str, float]] = {}
@@ -55,6 +58,7 @@ def _read_h2_results(log_path: Path) -> dict | None:
 
 
 def _read_run_epochs(log_path: Path, run_id: str) -> list[dict]:
+    """Return all epoch rows for a given run_id, sorted by epoch number."""
     if not log_path.exists():
         return []
     rows = []
@@ -69,6 +73,7 @@ def _read_run_epochs(log_path: Path, run_id: str) -> list[dict]:
 def plot_pretrain_curves(
     log_path: Path, run_id: str, model_name: str, figures_dir: Path
 ) -> None:
+    """Plot JEPA and reconstruction loss curves for a pretraining run."""
     import matplotlib.pyplot as plt
 
     rows = _read_run_epochs(log_path, run_id)
@@ -121,6 +126,7 @@ def plot_pretrain_curves(
 def plot_finetune_curves(
     log_path: Path, run_id: str, model_name: str, figures_dir: Path
 ) -> None:
+    """Plot loss, Dice, and mIoU training curves plus final test scores for a fine-tuning run."""
     import matplotlib.pyplot as plt
 
     rows = _read_run_epochs(log_path, run_id)
@@ -198,6 +204,7 @@ def plot_finetune_curves(
 
 
 def plot_h3_similarity(log_path: Path, figures_dir: Path) -> None:
+    """Plot within- vs between-neuron cosine similarity and the separation gap for H3."""
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -274,6 +281,7 @@ def plot_h3_similarity(log_path: Path, figures_dir: Path) -> None:
 
 
 def plot_h1_dice(log_path: Path, figures_dir: Path) -> None:
+    """Plot H1 Dice and mIoU bar charts comparing JEPA pretrained vs supervised baseline."""
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -330,6 +338,7 @@ def plot_h1_dice(log_path: Path, figures_dir: Path) -> None:
 
 
 def plot_h2_dice(log_path: Path, figures_dir: Path) -> None:
+    """Plot H2 Dice and mIoU bar charts comparing cross-organism transfer methods."""
     import matplotlib.pyplot as plt
 
     results = _read_h2_results(log_path)

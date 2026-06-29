@@ -14,6 +14,7 @@ def save_checkpoint(
     metadata: Optional[dict] = None,
     arch: Optional[dict] = None,
 ) -> Path:
+    """Save a single model's state dict and write a JSON sidecar with metadata."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -60,6 +61,7 @@ def save_compound_checkpoint(
 
 
 def load_compound_checkpoint(path: Path) -> dict:
+    """Load and validate a compound checkpoint saved by save_compound_checkpoint."""
     payload = torch.load(str(path), map_location="cpu", weights_only=False)
     if payload.get("type") != "neuroseg_jepa_v1":
         raise ValueError(
@@ -92,6 +94,7 @@ def list_checkpoints(output_dir: Path) -> list[dict]:
 
 
 def _write_sidecar(path: Path, model_name: str, run_id: str, metadata: Optional[dict], arch: Optional[dict] = None):
+    """Write a JSON metadata sidecar file next to the checkpoint."""
     meta = {
         "model_name": model_name,
         "run_id": run_id,

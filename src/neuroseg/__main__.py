@@ -8,12 +8,14 @@ from neuroseg.pipeline import run
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
+    """Load a YAML file and return its contents as a dict."""
     import yaml
     with open(path) as f:
         return yaml.safe_load(f) or {}
 
 
 def _parse_args() -> argparse.Namespace:
+    """Define and parse all CLI arguments for the neuroseg pipeline."""
     parser = argparse.ArgumentParser(
         description="neuroseg — neural segmentation pipeline for calcium imaging"
     )
@@ -113,6 +115,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main():
+    """Entry point: parse CLI args, resolve config, and invoke the pipeline."""
     args = _parse_args()
 
     mode = Mode.TRAINING if args.mode == "train" else Mode.INFERENCE

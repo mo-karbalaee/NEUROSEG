@@ -6,6 +6,7 @@ from neuroseg.models.state import State
 
 
 def _load_avi(path: str) -> np.ndarray:
+    """Read all frames from an AVI file and return them as a NumPy array."""
     cap = cv2.VideoCapture(path)
     frames = []
     while True:
@@ -18,6 +19,7 @@ def _load_avi(path: str) -> np.ndarray:
 
 
 def _load(path: str) -> np.ndarray:
+    """Load a TIFF stack or AVI file and ensure the result is at least 3-D (T×H×W)."""
     if "avi" in path:
         data = _load_avi(path)
     else:
@@ -28,6 +30,7 @@ def _load(path: str) -> np.ndarray:
 
 
 def loader_node(state: State) -> dict:
+    """Load the next file in the queue and advance the file index in state."""
     idx = state["current_file_index"]
     file_path = state["file_paths"][idx]
     data = _load(str(file_path))

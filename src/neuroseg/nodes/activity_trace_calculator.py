@@ -11,6 +11,7 @@ def _extract_traces(
     f0_percentile: int = 10,
     dff_epsilon: float = 1e-6,
 ) -> np.ndarray:
+    """Extract per-neuron ΔF/F₀ activity traces from segmentation masks and raw data."""
     T = data.shape[0]
     if masks is None or len(masks) == 0:
         return np.zeros((0, T))
@@ -30,12 +31,14 @@ def _extract_traces(
 
 
 def _save_traces(traces: np.ndarray, output_dir: str, file_name: str):
+    """Save the computed traces array as a .npy file under output_dir/traces/."""
     out = Path(output_dir) / "traces"
     out.mkdir(parents=True, exist_ok=True)
     np.save(str(out / f"traces+{file_name}.npy"), traces)
 
 
 def activity_trace_calculator_node(state: State) -> dict:
+    """Compute and save ΔF/F₀ traces for all detected neurons in the current file."""
     cfg = state.get("config", {})
     traces = _extract_traces(
         state["masks"],

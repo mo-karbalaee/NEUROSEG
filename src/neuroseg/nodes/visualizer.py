@@ -8,6 +8,7 @@ from neuroseg.models.state import State
 
 
 def _show_mask_overlay(ax: plt.Axes, frame: np.ndarray, mask: np.ndarray):
+    """Render a grayscale frame with a semi-transparent colored mask overlay."""
     ax.imshow(frame, cmap="gray")
     if mask.max() > 0:
         colored = np.zeros((*frame.shape[:2], 4), dtype=np.float32)
@@ -26,6 +27,7 @@ def _visualize_segmentation(
     output_dir: str,
     file_name: str,
 ):
+    """Save a per-frame segmentation overlay PNG for every frame in the stack."""
     out = Path(output_dir) / "segmentation" / file_name
     out.mkdir(parents=True, exist_ok=True)
 
@@ -47,6 +49,7 @@ def _visualize_segmentation(
 
 
 def _visualize_traces(traces: np.ndarray, output_dir: str, file_name: str):
+    """Save a single combined plot of all neuron activity traces."""
     N, T = traces.shape
     colors = plt.cm.tab20(np.linspace(0, 1, N))
     out = Path(output_dir) / "traces" / file_name
@@ -68,6 +71,7 @@ def _visualize_traces(traces: np.ndarray, output_dir: str, file_name: str):
 
 
 def _save_individual_traces(traces: np.ndarray, output_dir: str, file_name: str):
+    """Save one PNG per neuron showing its individual ΔF/F₀ trace."""
     N, T = traces.shape
     colors = plt.cm.tab20(np.linspace(0, 1, N))
     out = Path(output_dir) / "traces" / file_name
@@ -88,6 +92,7 @@ def _save_individual_traces(traces: np.ndarray, output_dir: str, file_name: str)
 
 
 def visualizer_node(state: State) -> dict:
+    """Produce all segmentation and trace visualizations for the current file."""
     _visualize_segmentation(
         state["data"], state["masks"], state["flows"], state["output_dir"], state["file_name"]
     )

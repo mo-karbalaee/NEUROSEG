@@ -14,6 +14,7 @@ from neuroseg.nodes.visualizer import visualizer_node
 
 
 def _training_node(state: State) -> dict:
+    """Dispatch training to the correct hypothesis trainer based on state."""
     hypothesis = state.get("hypothesis")
 
     if hypothesis == Hypothesis.H1:
@@ -32,16 +33,19 @@ def _training_node(state: State) -> dict:
 
 
 def _which_mode(state: State) -> str:
+    """Return the pipeline mode string used by the conditional edge router."""
     return state["mode"]
 
 
 def _files_remaining(state: State) -> str:
+    """Return 'continue' if more files are queued or 'done' when all have been processed."""
     if state["current_file_index"] < len(state["file_paths"]):
         return "continue"
     return "done"
 
 
 def build_app():
+    """Compile the LangGraph StateGraph that wires together all pipeline nodes."""
     workflow = StateGraph(State)
 
     workflow.add_node(Node.LOADER, loader_node)
@@ -78,6 +82,7 @@ def run(
     checkpoint_path: str | None = None,
     config: dict | None = None,
 ):
+    """Build and invoke the compiled pipeline on all files in data_dir."""
     data_dir = Path(data_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -104,6 +109,7 @@ def run(
 
 
 def visualize_pipeline(output_path: str | Path = "docs/pipeline.png"):
+    """Render the pipeline graph as a PNG using pygraphviz."""
     try:
         app = build_app()
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)

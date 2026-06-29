@@ -21,6 +21,7 @@ class RunLogger:
         model_name: str,
         labeled_fraction: float | None = None,
     ):
+        """Initialize a logger for one training run and assign it a unique run_id."""
         self.run_id = uuid.uuid4().hex[:8]
         self._meta = {
             "hypothesis": hypothesis,
@@ -32,6 +33,7 @@ class RunLogger:
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(self, epoch: int | None = None, **metrics):
+        """Append one row with the current metrics and run metadata to the CSV log."""
         row = {col: "" for col in COLUMNS}
         row["timestamp"] = datetime.now().isoformat(timespec="seconds")
         row["run_id"] = self.run_id

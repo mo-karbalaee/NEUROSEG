@@ -61,6 +61,7 @@ class H1Config:
     test_split: float = 0.2
 
     def arch_dict(self) -> dict:
+        """Return architecture hyperparameters as a dict suitable for saving in checkpoints."""
         return {
             "dobs": self.dobs,
             "henc": self.henc,
@@ -78,6 +79,7 @@ class H1Config:
 
 
 def setup_seed(seed: int):
+    """Seed Python, NumPy, and PyTorch RNGs for reproducibility."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -86,6 +88,7 @@ def setup_seed(seed: int):
 
 
 def build_config(state: State) -> H1Config:
+    """Build an H1Config by overlaying any matching keys from state['config']."""
     cfg = H1Config()
     for k, v in state.get("config", {}).items():
         if hasattr(cfg, k):
@@ -94,6 +97,7 @@ def build_config(state: State) -> H1Config:
 
 
 def _make_unlabeled_dataset(data_dir: str, cfg: H1Config) -> Dataset:
+    """Create an unlabeled dataset from either Neurofinder or plain TIFF files."""
     if is_neurofinder_dir(data_dir) or find_neurofinder_dirs(data_dir):
         return NeurofinderDataset(data_dir, cfg.seq_len, cfg.img_size, labeled=False)
     file_paths = [str(p) for p in sorted(Path(data_dir).iterdir()) if p.is_file()]
@@ -106,6 +110,7 @@ def _make_labeled_dataset(
     fraction: float,
     binarize: bool = True,
 ) -> Dataset:
+    """Create a labeled dataset for fine-tuning, sampling the given labeled fraction."""
     if is_neurofinder_dir(data_dir) or find_neurofinder_dirs(data_dir):
         return NeurofinderDataset(
             data_dir, cfg.seq_len, cfg.img_size,
@@ -127,6 +132,7 @@ def pretrain(
     log_path: Optional[Path] = None,
     hypothesis: str = "H1",
 ) -> Optional[Path]:
+    """Self-supervised JEPA pretraining on unlabeled data; returns the checkpoint path."""
     dataset = _make_unlabeled_dataset(data_dir, cfg)
     if len(dataset) == 0:
         print("No clips found for pretraining — skipping.")
@@ -209,6 +215,7 @@ def pretrain(
 
 @torch.inference_mode()
 def _validate_pretrain(val_loader, jepa: JEPA, pixel_decoder, cfg: H1Config, device: torch.device) -> dict:
+    """Evaluate JEPA and reconstruction losses on the validation set."""
     jepa.eval()
     pixel_decoder.eval()
     val_jepa, val_recon = [], []
@@ -352,6 +359,7 @@ def finetune(
 
 @torch.inference_mode()
 def _validate_finetune(val_loader, jepa: JEPA, seg_head: nn.Module, device: torch.device) -> tuple[float, float]:
+    """Evaluate mean Dice and mIoU of the segmentation head on the validation set."""
     jepa.eval()
     seg_head.eval()
     dice_scores, miou_scores = [], []
@@ -381,6 +389,7 @@ def _validate_finetune(val_loader, jepa: JEPA, seg_head: nn.Module, device: torc
 
 
 def run_h1(state: State):
+    """Run the full H1 experiment: pretrain, then fine-tune and evaluate at each labeled fraction."""
     cfg = build_config(state)
     setup_seed(cfg.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -19,6 +19,7 @@ from neuroseg.trainers.jepa import JEPA, build_jepa
 
 
 def _load_encoder(checkpoint_path: Optional[str], cfg: H1Config, device: torch.device) -> JEPA:
+    """Load a JEPA encoder from a checkpoint, or build a random one if path is None."""
     if checkpoint_path is None:
         return build_jepa(cfg.arch_dict(), device)
 
@@ -130,6 +131,7 @@ def _run_mode(
     device: torch.device,
     log_path: Path,
 ):
+    """Load an encoder, compute the similarity gap for the given mode, and log the results."""
     from neuroseg.logger import RunLogger
     jepa = _load_encoder(checkpoint_path, cfg, device)
     metrics = _compute_similarity_gap(jepa, dataset, device, cfg.img_size)

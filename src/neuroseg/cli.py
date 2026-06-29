@@ -5,6 +5,7 @@ from neuroseg.checkpoint import list_checkpoints
 
 
 def pick_checkpoint(output_dir: Path) -> Optional[Path]:
+    """Interactively list compound checkpoints and return the user's selection."""
     checkpoints = list_checkpoints(Path(output_dir))
 
     if not checkpoints:
