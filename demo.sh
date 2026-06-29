@@ -69,7 +69,7 @@ echo "── Step 4/6  Measuring temporal stability — H3 ───────
 PRETRAINED_CKPT=$(python - <<'EOF'
 from pathlib import Path
 import json
-for jf in sorted(Path("output/demo_checkpoints").glob("*.json"), key=lambda p: p.stat().st_mtime):
+for jf in sorted(Path("output/demo_checkpoints").glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
     try:
         meta = json.loads(jf.read_text())
     except Exception:
@@ -86,7 +86,7 @@ EOF
 SUPERVISED_CKPT=$(python - <<'EOF'
 from pathlib import Path
 import json
-for jf in sorted(Path("output/demo_checkpoints").glob("*.json"), key=lambda p: p.stat().st_mtime):
+for jf in sorted(Path("output/demo_checkpoints").glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
     try:
         meta = json.loads(jf.read_text())
     except Exception:
@@ -102,7 +102,7 @@ for jf in sorted(Path("output/demo_checkpoints").glob("*.json"), key=lambda p: p
 EOF
 )
 
-H3_CONFIG=$(mktemp /tmp/neuroseg_h3_XXXXXX.yaml)
+H3_CONFIG=$(mktemp /tmp/neuroseg_h3_XXXXXX)
 cat > "$H3_CONFIG" <<YAML
 h3_data_dir: data/demo
 pretrained_ckpt: ${PRETRAINED_CKPT}
