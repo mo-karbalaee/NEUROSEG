@@ -76,7 +76,7 @@ for jf in sorted(ckpt_dir.glob("*.json"), key=lambda p: p.stat().st_mtime):
         continue
     pt = jf.with_suffix(".pt")
     if pt.exists():
-        candidates.append((meta.get("val_dice", 0.0), str(pt)))
+        candidates.append((meta.get("dice", 0.0), str(pt)))
 
 if not candidates:
     print("", file=sys.stderr)
@@ -115,11 +115,20 @@ echo ""
 echo "  Figure 1 (H1 Dice comparison):"
 echo "    $FIGURES_DIR/h1_dice_comparison.png"
 echo ""
-echo "  Figure 2 (H2 Dice comparison):"
+echo "  Figure 2 (H1 mIoU comparison):"
+echo "    $FIGURES_DIR/h1_miou_comparison.png"
+echo ""
+echo "  Figure 3 (H2 Dice comparison):"
 echo "    $FIGURES_DIR/h2_dice_comparison.png"
+echo ""
+echo "  Figure 4 (H2 mIoU comparison):"
+echo "    $FIGURES_DIR/h2_miou_comparison.png"
 echo ""
 echo "  Figure 3 (Segmentation preview):"
 echo "    $FIGURES_DIR/segmentation_preview.png"
+echo ""
+echo "  Per-run training curves (loss, Dice, mIoU, test scores):"
+echo "    $CHECKPOINTS_DIR/figures/"
 echo ""
 echo "  Training logs:"
 echo "    $CHECKPOINTS_DIR/logs/runs.csv"

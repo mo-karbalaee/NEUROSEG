@@ -12,15 +12,20 @@ def _safe_float(s: str) -> float | None:
 def _read_h1_results(log_path: Path) -> dict | None:
     if not log_path.exists():
         return None
-    results: dict[str, dict[float, float]] = {"finetune": {}, "supervised_baseline": {}}
+    results: dict[str, dict[float, dict[str, float]]] = {"finetune": {}, "supervised_baseline": {}}
     with open(log_path, newline="") as f:
         for row in csv.DictReader(f):
             mode = row.get("mode", "")
             frac_str = row.get("labeled_fraction", "")
-            dice_str = row.get("test_dice", "")
+            dice_str = row.get("test_dice", "") or row.get("val_dice", "")
+            miou_str = row.get("test_miou", "") or row.get("val_miou", "")
             if mode in results and frac_str and dice_str:
                 try:
-                    results[mode][float(frac_str)] = float(dice_str)
+                    frac = float(frac_str)
+                    results[mode][frac] = {
+                        "dice": float(dice_str),
+                        "miou": float(miou_str) if miou_str else 0.0,
+                    }
                 except ValueError:
                     pass
     has_data = any(results[m] for m in results)
@@ -30,16 +35,20 @@ def _read_h1_results(log_path: Path) -> dict | None:
 def _read_h2_results(log_path: Path) -> dict | None:
     if not log_path.exists():
         return None
-    results: dict[str, float] = {}
+    results: dict[str, dict[str, float]] = {}
     with open(log_path, newline="") as f:
         for row in csv.DictReader(f):
             if row.get("hypothesis", "") != "H2":
                 continue
             mode = row.get("mode", "")
-            dice_str = row.get("test_dice", "")
+            dice_str = row.get("test_dice", "") or row.get("val_dice", "")
+            miou_str = row.get("test_miou", "") or row.get("val_miou", "")
             if mode in ("finetune", "supervised_baseline") and dice_str:
                 try:
-                    results[mode] = float(dice_str)
+                    results[mode] = {
+                        "dice": float(dice_str),
+                        "miou": float(miou_str) if miou_str else 0.0,
+                    }
                 except ValueError:
                     pass
     return results if results else None
@@ -273,39 +282,49 @@ def plot_h1_dice(log_path: Path, figures_dir: Path) -> None:
 
     fractions = sorted(set(list(results["finetune"]) + list(results["supervised_baseline"])))
     if not fractions:
-        print("No H1 Dice results to plot.")
+        print("No H1 results to plot.")
         return
 
     x = np.arange(len(fractions))
     w = 0.35
-    jepa_vals = [results["finetune"].get(f, 0.0) for f in fractions]
-    base_vals  = [results["supervised_baseline"].get(f, 0.0) for f in fractions]
+    xtick_labels = [f"{int(f * 100)}%" for f in fractions]
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    b1 = ax.bar(x - w / 2, jepa_vals, w, label="JEPA Pretrained",     color="#2196F3", alpha=0.9)
-    b2 = ax.bar(x + w / 2, base_vals,  w, label="Supervised Baseline", color="#FF9800", alpha=0.9)
+    def _vals(metric: str, mode: str) -> list[float]:
+        return [results[mode].get(f, {}).get(metric, 0.0) for f in fractions]
 
-    for bar in (*b1, *b2):
-        h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
-                f"{h:.2f}", ha="center", va="bottom", fontsize=8)
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    for metric, ylabel, filename in [
+        ("dice", "Dice Score", "h1_dice_comparison.png"),
+        ("miou", "mIoU",       "h1_miou_comparison.png"),
+    ]:
+        jepa_vals = _vals(metric, "finetune")
+        base_vals = _vals(metric, "supervised_baseline")
 
-    ax.set_xticks(x)
-    ax.set_xticklabels([f"{int(f * 100)}%" for f in fractions])
-    ax.set_xlabel("Labeled Data Fraction")
-    ax.set_ylabel("Dice Score (test set)")
-    ax.set_title("H1 — Semi-supervised Segmentation\nDice Score vs Labeled Data Fraction")
-    ax.set_ylim(0, 1.1)
-    ax.legend()
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    plt.tight_layout()
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.set_title(
+            f"H1 — Semi-supervised Segmentation\n{ylabel} vs Labeled Data Fraction",
+            fontsize=12,
+        )
+        b1 = ax.bar(x - w / 2, jepa_vals, w, label="JEPA Pretrained",     color="#2196F3", alpha=0.9)
+        b2 = ax.bar(x + w / 2, base_vals,  w, label="Supervised Baseline", color="#FF9800", alpha=0.9)
+        for bar in (*b1, *b2):
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
+                    f"{h:.2f}", ha="center", va="bottom", fontsize=8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(xtick_labels)
+        ax.set_xlabel("Labeled Data Fraction")
+        ax.set_ylabel(f"{ylabel} (test set)")
+        ax.set_ylim(0, 1.1)
+        ax.legend()
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        plt.tight_layout()
 
-    out = figures_dir / "h1_dice_comparison.png"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(str(out), dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved: {out}")
+        out = figures_dir / filename
+        plt.savefig(str(out), dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved: {out}")
 
 
 def plot_h2_dice(log_path: Path, figures_dir: Path) -> None:
@@ -319,24 +338,28 @@ def plot_h2_dice(log_path: Path, figures_dir: Path) -> None:
     modes  = ["finetune", "supervised_baseline"]
     labels = ["JEPA Pretrained", "Supervised Baseline"]
     colors = ["#2196F3", "#FF9800"]
-    vals   = [results.get(m, 0.0) for m in modes]
 
-    fig, ax = plt.subplots(figsize=(6, 5))
-    bars = ax.bar(labels, vals, color=colors, alpha=0.9, width=0.5)
-    for bar in bars:
-        h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
-                f"{h:.2f}", ha="center", va="bottom", fontsize=10)
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    for metric, ylabel, filename in [
+        ("dice", "Dice Score", "h2_dice_comparison.png"),
+        ("miou", "mIoU",       "h2_miou_comparison.png"),
+    ]:
+        vals = [results.get(m, {}).get(metric, 0.0) for m in modes]
 
-    ax.set_ylabel("Dice Score (test set)")
-    ax.set_title("H2 — Cross-organism Transfer\nDice Score on Target Organism")
-    ax.set_ylim(0, 1.1)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    plt.tight_layout()
+        fig, ax = plt.subplots(figsize=(6, 5))
+        bars = ax.bar(labels, vals, color=colors, alpha=0.9, width=0.5)
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
+                    f"{h:.2f}", ha="center", va="bottom", fontsize=10)
+        ax.set_ylabel(f"{ylabel} (test set)")
+        ax.set_title(f"H2 — Cross-organism Transfer\n{ylabel} on Target Organism", fontsize=12)
+        ax.set_ylim(0, 1.1)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        plt.tight_layout()
 
-    out = figures_dir / "h2_dice_comparison.png"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(str(out), dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved: {out}")
+        out = figures_dir / filename
+        plt.savefig(str(out), dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved: {out}")
