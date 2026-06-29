@@ -37,6 +37,7 @@
     "tifffile",
     "tqdm",
     "unweight",
+    "xticks",
     "zebrafish"
   ]
 }

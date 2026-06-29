@@ -128,3 +128,6 @@ def run_h2(state: State):
     )
 
     print("[H2] Done.")
+
+    from neuroseg.plots import plot_h2_dice
+    plot_h2_dice(log_path, output_dir / "figures")
