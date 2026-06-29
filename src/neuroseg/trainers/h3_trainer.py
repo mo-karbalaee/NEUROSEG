@@ -19,16 +19,25 @@ from neuroseg.trainers.jepa import JEPA, build_jepa
 
 
 def _load_encoder(checkpoint_path: Optional[str], cfg: H1Config, device: torch.device) -> JEPA:
-    jepa = build_jepa(cfg.arch_dict(), device)
     if checkpoint_path is None:
-        return jepa
+        return build_jepa(cfg.arch_dict(), device)
 
+    import json as _json
     path = Path(checkpoint_path)
     payload = torch.load(str(path), map_location=device, weights_only=False)
 
     if isinstance(payload, dict) and payload.get("type") == "neuroseg_jepa_v1":
+        arch = payload.get("arch", cfg.arch_dict())
+        jepa = build_jepa(arch, device)
         jepa.load_state_dict(payload["jepa"])
     else:
+        arch = cfg.arch_dict()
+        sidecar = path.with_suffix(".json")
+        if sidecar.exists():
+            sidecar_meta = _json.loads(sidecar.read_text())
+            if "arch" in sidecar_meta:
+                arch = sidecar_meta["arch"]
+        jepa = build_jepa(arch, device)
         jepa.load_state_dict(payload)
 
     return jepa

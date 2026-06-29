@@ -45,6 +45,12 @@ class H1Config:
     seg_head_hidden: int = 16
     std_coeff: float = 10.0
     cov_coeff: float = 100.0
+    std_margin: float = 1.0
+    context_length: int = 2
+    decoder_hidden_dim: int = 16
+    seg_threshold: float = 0.5
+    f0_percentile: int = 10
+    dff_epsilon: float = 1e-6
     lr: float = 1e-3
     pretrain_epochs: int = 100
     finetune_epochs: int = 50
@@ -62,6 +68,12 @@ class H1Config:
             "dstc": self.dstc,
             "seg_head_hidden": self.seg_head_hidden,
             "img_size": self.img_size,
+            "context_length": self.context_length,
+            "std_coeff": self.std_coeff,
+            "cov_coeff": self.cov_coeff,
+            "std_margin": self.std_margin,
+            "decoder_hidden_dim": self.decoder_hidden_dim,
+            "seg_threshold": self.seg_threshold,
         }
 
 
@@ -135,7 +147,7 @@ def pretrain(
     )
 
     jepa = build_jepa(cfg.arch_dict(), device)
-    decoder = ImageDecoder(cfg.dstc, cfg.dobs, hidden_dim=16)
+    decoder = ImageDecoder(cfg.dstc, cfg.dobs, hidden_dim=cfg.decoder_hidden_dim)
     pixel_decoder = JEPAProbe(jepa, decoder, nn.MSELoss()).to(device)
 
     optimizer = Adam([
@@ -182,6 +194,7 @@ def pretrain(
     checkpoint_path = save_checkpoint(
         jepa, model_name=model_name, run_id=logger.run_id,
         output_dir=output_dir, metadata={"hypothesis": hypothesis, "mode": "pretrain"},
+        arch=cfg.arch_dict(),
     )
     print(f"Pretrained checkpoint: {checkpoint_path}")
 

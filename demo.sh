@@ -7,18 +7,22 @@
 #
 # Requires: data/neurofinder.00.00/ (download from the Neurofinder benchmark).
 #
-# What it does (5 steps):
+# What it does (6 steps):
 #   1. Prepare a 100-frame subset of neurofinder.00.00 as the demo dataset
-#      (also creates 70/30 temporal splits for the H2 cross-domain experiment).
+#      (also creates a subset of neurofinder.04.00 for the H2 cross-domain experiment).
 #   2. Train JEPA on that data (H1 — pretrain + finetune, scaled to ~10 min on CPU).
 #   3. Train JEPA for cross-domain transfer (H2 — source pretrain + target finetune).
-#   4. Run inference on a stacked TIFF and write segmentation output.
-#   5. Produce result figures from the training and inference outputs.
+#   4. Measure temporal representation stability (H3 — cosine similarity gap).
+#   5. Run inference on a stacked TIFF and write segmentation output.
+#   6. Produce result figures from the training and inference outputs.
 #
 # Output:
 #   output/figures/h1_dice_comparison.png  — Dice vs labeled-data fraction (H1)
+#   output/figures/h1_miou_comparison.png  — mIoU vs labeled-data fraction (H1)
 #   output/figures/h2_dice_comparison.png  — Dice: pretrained vs baseline (H2)
+#   output/figures/h2_miou_comparison.png  — mIoU: pretrained vs baseline (H2)
 #   output/figures/segmentation_preview.png — raw frame + segmentation overlay
+#   output/demo_checkpoints/figures/h3_similarity.png — temporal stability (H3)
 
 set -euo pipefail
 
@@ -28,7 +32,7 @@ FIGURES_DIR="output/figures"
 
 # ── Step 1: Prepare real data subset ──────────────────────────────────────────
 echo ""
-echo "── Step 1/5  Preparing demo dataset (neurofinder.00.00, 100 frames) ─────"
+echo "── Step 1/6  Preparing demo dataset (neurofinder.00.00, 100 frames) ─────"
 uv run python scripts/prepare_demo_data.py \
     --source data/neurofinder.00.00 \
     --out data/demo \
@@ -39,7 +43,7 @@ uv run python scripts/prepare_demo_data.py \
 
 # ── Step 2: Train H1 (pretrain + finetune) ────────────────────────────────────
 echo ""
-echo "── Step 2/5  Training JEPA — H1 (pretrain + finetune) ───────────────────"
+echo "── Step 2/6  Training JEPA — H1 (pretrain + finetune) ───────────────────"
 uv run main.py \
     --mode train \
     --H1 \
@@ -49,7 +53,7 @@ uv run main.py \
 
 # ── Step 3: Train H2 (cross-domain transfer) ──────────────────────────────────
 echo ""
-echo "── Step 3/5  Training JEPA — H2 (cross-domain transfer) ─────────────────"
+echo "── Step 3/6  Training JEPA — H2 (cross-domain transfer) ─────────────────"
 uv run main.py \
     --mode train \
     --H2 \
@@ -57,9 +61,69 @@ uv run main.py \
     --output "$CHECKPOINTS_DIR" \
     --config config.demo.yaml
 
-# ── Step 4: Find best compound checkpoint ─────────────────────────────────────
+# ── Step 4: Run H3 (temporal representation stability) ────────────────────────
 echo ""
-echo "── Step 4/5  Running inference ───────────────────────────────────────────"
+echo "── Step 4/6  Measuring temporal stability — H3 ───────────────────────────"
+
+# Find the H1 pretrained JEPA checkpoint (non-compound)
+PRETRAINED_CKPT=$(python - <<'EOF'
+from pathlib import Path
+import json
+for jf in sorted(Path("output/demo_checkpoints").glob("*.json"), key=lambda p: p.stat().st_mtime):
+    try:
+        meta = json.loads(jf.read_text())
+    except Exception:
+        continue
+    if meta.get("hypothesis") == "H1" and meta.get("mode") == "pretrain":
+        pt = jf.with_suffix(".pt")
+        if pt.exists():
+            print(pt)
+            break
+EOF
+)
+
+# Find the H1 supervised-baseline f=100% checkpoint (compound)
+SUPERVISED_CKPT=$(python - <<'EOF'
+from pathlib import Path
+import json
+for jf in sorted(Path("output/demo_checkpoints").glob("*.json"), key=lambda p: p.stat().st_mtime):
+    try:
+        meta = json.loads(jf.read_text())
+    except Exception:
+        continue
+    if (meta.get("hypothesis") == "H1"
+            and meta.get("mode") == "supervised_baseline"
+            and abs(float(meta.get("labeled_fraction", 0)) - 1.0) < 0.01
+            and meta.get("compound")):
+        pt = jf.with_suffix(".pt")
+        if pt.exists():
+            print(pt)
+            break
+EOF
+)
+
+H3_CONFIG=$(mktemp /tmp/neuroseg_h3_XXXXXX.yaml)
+cat > "$H3_CONFIG" <<YAML
+h3_data_dir: data/demo
+pretrained_ckpt: ${PRETRAINED_CKPT}
+supervised_ckpt: ${SUPERVISED_CKPT}
+seq_len: 5
+img_size: 128
+seed: 42
+YAML
+
+uv run main.py \
+    --mode train \
+    --H3 \
+    --data data/demo \
+    --output "$CHECKPOINTS_DIR" \
+    --config "$H3_CONFIG"
+
+rm -f "$H3_CONFIG"
+
+# ── Step 5: Find best compound checkpoint and run inference ───────────────────
+echo ""
+echo "── Step 5/6  Running inference ───────────────────────────────────────────"
 
 CHECKPOINT_PATH=$(python - <<'EOF'
 import json, sys
@@ -100,9 +164,9 @@ uv run main.py \
     --output "$INFERENCE_DIR" \
     --checkpoint "$CHECKPOINT_PATH"
 
-# ── Step 5: Plot results ───────────────────────────────────────────────────────
+# ── Step 6: Plot results ───────────────────────────────────────────────────────
 echo ""
-echo "── Step 5/5  Generating result figures ───────────────────────────────────"
+echo "── Step 6/6  Generating result figures ───────────────────────────────────"
 uv run python scripts/plot_results.py \
     --output "$FIGURES_DIR" \
     --inference-output "$INFERENCE_DIR" \
@@ -124,7 +188,10 @@ echo ""
 echo "  Figure 4 (H2 mIoU comparison):"
 echo "    $FIGURES_DIR/h2_miou_comparison.png"
 echo ""
-echo "  Figure 3 (Segmentation preview):"
+echo "  Figure 5 (H3 temporal stability):"
+echo "    $CHECKPOINTS_DIR/figures/h3_similarity.png"
+echo ""
+echo "  Figure 6 (Segmentation preview):"
 echo "    $FIGURES_DIR/segmentation_preview.png"
 echo ""
 echo "  Per-run training curves (loss, Dice, mIoU, test scores):"

@@ -238,12 +238,12 @@ class CovarianceLoss(nn.Module):
 
 
 class VCLoss(nn.Module):
-    def __init__(self, std_coeff, cov_coeff, proj=None):
+    def __init__(self, std_coeff, cov_coeff, proj=None, std_margin=1.0):
         super().__init__()
         self.std_coeff = std_coeff
         self.cov_coeff = cov_coeff
         self.proj = nn.Identity() if proj is None else proj
-        self.std_loss_fn = HingeStdLoss(std_margin=1.0)
+        self.std_loss_fn = HingeStdLoss(std_margin=std_margin)
         self.cov_loss_fn = CovarianceLoss()
 
     def forward(self, x, actions=None):
@@ -347,12 +347,16 @@ def build_jepa(arch: dict, device: torch.device) -> "JEPA":
     henc = arch.get("henc", 32)
     hpre = arch.get("hpre", 32)
     dstc = arch.get("dstc", 8)
+    context_length = arch.get("context_length", 2)
+    std_coeff = arch.get("std_coeff", 10.0)
+    cov_coeff = arch.get("cov_coeff", 100.0)
+    std_margin = arch.get("std_margin", 1.0)
 
     encoder = ResNet5(dobs, henc, dstc)
     predictor_model = ResUNet(2 * dstc, hpre, dstc)
-    predictor = StateOnlyPredictor(predictor_model, context_length=2)
+    predictor = StateOnlyPredictor(predictor_model, context_length=context_length)
     projector = Projector(f"{dstc}-{dstc * 4}-{dstc * 4}")
-    regularizer = VCLoss(10.0, 100.0, proj=projector)
+    regularizer = VCLoss(std_coeff, cov_coeff, proj=projector, std_margin=std_margin)
     ploss_fn = SquareLossSeq(projector)
     return JEPA(encoder, encoder, predictor, regularizer, ploss_fn).to(device)
 

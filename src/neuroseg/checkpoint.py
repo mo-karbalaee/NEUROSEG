@@ -12,6 +12,7 @@ def save_checkpoint(
     run_id: str,
     output_dir: Path,
     metadata: Optional[dict] = None,
+    arch: Optional[dict] = None,
 ) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -21,7 +22,7 @@ def save_checkpoint(
         raise FileExistsError(f"Checkpoint already exists: {path}")
 
     torch.save(model.state_dict(), path)
-    _write_sidecar(path, model_name, run_id, metadata)
+    _write_sidecar(path, model_name, run_id, metadata, arch=arch)
     return path
 
 
@@ -90,7 +91,7 @@ def list_checkpoints(output_dir: Path) -> list[dict]:
     return results
 
 
-def _write_sidecar(path: Path, model_name: str, run_id: str, metadata: Optional[dict]):
+def _write_sidecar(path: Path, model_name: str, run_id: str, metadata: Optional[dict], arch: Optional[dict] = None):
     meta = {
         "model_name": model_name,
         "run_id": run_id,
@@ -98,5 +99,7 @@ def _write_sidecar(path: Path, model_name: str, run_id: str, metadata: Optional[
     }
     if metadata:
         meta.update(metadata)
+    if arch:
+        meta["arch"] = arch
     with open(path.with_suffix(".json"), "w") as f:
         json.dump(meta, f, indent=2)

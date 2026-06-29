@@ -5,7 +5,12 @@ import numpy as np
 from neuroseg.models.state import State
 
 
-def _extract_traces(masks: list, data: np.ndarray) -> np.ndarray:
+def _extract_traces(
+    masks: list,
+    data: np.ndarray,
+    f0_percentile: int = 10,
+    dff_epsilon: float = 1e-6,
+) -> np.ndarray:
     T = data.shape[0]
     if masks is None or len(masks) == 0:
         return np.zeros((0, T))
@@ -20,8 +25,8 @@ def _extract_traces(masks: list, data: np.ndarray) -> np.ndarray:
             if len(pixel_values) > 0:
                 traces[n - 1, t] = pixel_values.mean()
 
-    F0 = np.percentile(traces, 10, axis=1, keepdims=True)
-    return (traces - F0) / (F0 + 1e-6)
+    F0 = np.percentile(traces, f0_percentile, axis=1, keepdims=True)
+    return (traces - F0) / (F0 + dff_epsilon)
 
 
 def _save_traces(traces: np.ndarray, output_dir: str, file_name: str):
@@ -31,6 +36,12 @@ def _save_traces(traces: np.ndarray, output_dir: str, file_name: str):
 
 
 def activity_trace_calculator_node(state: State) -> dict:
-    traces = _extract_traces(state["masks"], state["data"])
+    cfg = state.get("config", {})
+    traces = _extract_traces(
+        state["masks"],
+        state["data"],
+        f0_percentile=cfg.get("f0_percentile", 10),
+        dff_epsilon=cfg.get("dff_epsilon", 1e-6),
+    )
     _save_traces(traces, state["output_dir"], state["file_name"])
     return {"traces": traces}

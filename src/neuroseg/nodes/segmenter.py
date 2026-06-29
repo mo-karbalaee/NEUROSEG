@@ -37,6 +37,7 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
     seg_head.load_state_dict(payload["seg_head"])
     seg_head.eval()
 
+    seg_threshold = arch.get("seg_threshold", 0.5)
     min_size = max(9, (img_size * img_size) // 100)
 
     T = data.shape[0]
@@ -58,7 +59,7 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
             enc_mean = enc_state[:, :, 0]
             pred = seg_head(enc_mean)
             pred = F.interpolate(pred, size=(H, W), mode="bilinear", align_corners=False)
-            binary = (pred.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+            binary = (pred.squeeze().cpu().numpy() > seg_threshold).astype(np.uint8)
 
             labeled = _filter_small_components(connected_components(binary)[0], min_size)
             masks.append(labeled)
