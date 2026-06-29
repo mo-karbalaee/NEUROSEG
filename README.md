@@ -214,6 +214,7 @@ NEUROSEG/
 │   └── test_smoke.py                # Smoke tests (model, metrics, checkpoint)
 └── archive/
     └── EB_JEPA_NEUROFINDER.py       # Original research prototype (reference only)
+    └── notebooks/                   # Sample Jupyter notebooks for HPC execution. 
 ```
 
 ---
