@@ -52,6 +52,7 @@ class H1Config:
     seed: int = 1
     labeled_fractions: list[float] = field(default_factory=lambda: list(LABELED_FRACTIONS))
     val_split: float = 0.1
+    test_split: float = 0.2
 
     def arch_dict(self) -> dict:
         return {
@@ -174,6 +175,7 @@ def pretrain(
         logger.log(
             epoch=epoch,
             train_loss=epoch_jepa / n_batches,
+            train_recon_loss=epoch_recon / n_batches,
             **val_metrics,
         )
 
@@ -182,6 +184,13 @@ def pretrain(
         output_dir=output_dir, metadata={"hypothesis": hypothesis, "mode": "pretrain"},
     )
     print(f"Pretrained checkpoint: {checkpoint_path}")
+
+    from neuroseg.plots import plot_pretrain_curves
+    plot_pretrain_curves(
+        log_path or output_dir / "logs" / "runs.csv",
+        logger.run_id, model_name, output_dir / "figures",
+    )
+
     return checkpoint_path
 
 
@@ -203,8 +212,8 @@ def _validate_pretrain(val_loader, jepa: JEPA, pixel_decoder, cfg: H1Config, dev
     jepa.train()
     pixel_decoder.train()
     if not val_jepa:
-        return {"val/jepa_loss": 0.0, "val/recon_loss": 0.0}
-    return {"val/jepa_loss": float(np.mean(val_jepa)), "val/recon_loss": float(np.mean(val_recon))}
+        return {"val_jepa_loss": 0.0, "val_recon_loss": 0.0}
+    return {"val_jepa_loss": float(np.mean(val_jepa)), "val_recon_loss": float(np.mean(val_recon))}
 
 
 def finetune(
@@ -235,14 +244,18 @@ def finetune(
         print(f"No labeled clips — skipping {mode} f={fraction}")
         return {}
 
-    n_val = max(1, int(len(dataset) * cfg.val_split))
-    n_train = len(dataset) - n_val
-    train_set, val_set = random_split(
-        dataset, [n_train, n_val],
+    n = len(dataset)
+    n_test = max(1, int(n * cfg.test_split))
+    n_rem = n - n_test
+    n_val = max(1, int(n_rem * cfg.val_split))
+    n_train = max(1, n_rem - n_val)
+    test_set, train_set, val_set = random_split(
+        dataset, [n_test, n_train, n_val],
         generator=torch.Generator().manual_seed(cfg.seed),
     )
     train_loader = DataLoader(train_set, batch_size=cfg.batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
     jepa = build_jepa(cfg.arch_dict(), device)
     if mode == "finetune" and pretrained_checkpoint is not None:
@@ -300,6 +313,9 @@ def finetune(
             val_miou=val_miou_score,
         )
 
+    test_dice_score, test_miou_score = _validate_finetune(test_loader, jepa, seg_head, device)
+
+    actual_log_path = log_path or output_dir / "logs" / "runs.csv"
     checkpoint_path = save_compound_checkpoint(
         models={"jepa": jepa, "seg_head": seg_head},
         arch=cfg.arch_dict(),
@@ -307,12 +323,16 @@ def finetune(
         run_id=logger.run_id,
         output_dir=output_dir,
         metadata={"hypothesis": hypothesis, "mode": mode, "labeled_fraction": fraction,
-                  "dice": val_dice_score, "miou": val_miou_score},
+                  "dice": test_dice_score, "miou": test_miou_score},
     )
-    logger.log(val_dice=val_dice_score, val_miou=val_miou_score,
+    logger.log(test_dice=test_dice_score, test_miou=test_miou_score,
                checkpoint=str(checkpoint_path))
+    print(f"[{mode}] f={fraction} | test_dice={test_dice_score:.4f}  test_miou={test_miou_score:.4f}")
 
-    return {"dice": val_dice_score, "miou": val_miou_score}
+    from neuroseg.plots import plot_finetune_curves
+    plot_finetune_curves(actual_log_path, logger.run_id, model_name, output_dir / "figures")
+
+    return {"dice": test_dice_score, "miou": test_miou_score}
 
 
 @torch.inference_mode()

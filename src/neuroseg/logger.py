@@ -5,7 +5,9 @@ from pathlib import Path
 
 COLUMNS = [
     "timestamp", "run_id", "hypothesis", "mode", "model_name",
-    "labeled_fraction", "epoch", "train_loss", "val_dice", "val_miou",
+    "labeled_fraction", "epoch", "train_loss", "train_recon_loss",
+    "val_jepa_loss", "val_recon_loss",
+    "val_dice", "val_miou", "test_dice", "test_miou",
     "within_sim", "between_sim", "gap", "checkpoint",
 ]
 

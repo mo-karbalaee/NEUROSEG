@@ -207,3 +207,6 @@ def run_h3(state: State):
     _run_mode("no_pretrain", None, dataset, cfg, device, log_path)
 
     print("[H3] Done.")
+
+    from neuroseg.plots import plot_h3_similarity
+    plot_h3_similarity(log_path, Path(state["output_dir"]) / "figures")
