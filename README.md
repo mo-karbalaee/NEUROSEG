@@ -28,7 +28,7 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 
 ## Reproduce in 20 Minutes
 
-`demo.sh` runs the full H1 and H2 pipelines end-to-end on CPU in approximately 15–25 minutes using a real subset of the Neurofinder benchmark dataset.
+`demo.sh` runs the full H1 and H2 pipelines end-to-end on CPU in approximately 45–60 minutes using a real subset of the Neurofinder benchmark dataset.
 
 ### What you need
 
