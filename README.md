@@ -28,7 +28,7 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 
 ## Reproduce in 20 Minutes
 
-`demo.sh` runs the full H1 pipeline end-to-end on CPU in approximately 10–20 minutes using a real subset of the Neurofinder benchmark dataset.
+`demo.sh` runs the full H1 and H2 pipelines end-to-end on CPU in approximately 15–25 minutes using a real subset of the Neurofinder benchmark dataset.
 
 ### What you need
 
@@ -45,21 +45,27 @@ uv sync
 bash demo.sh
 ```
 
-### What happens (4 steps)
+### What happens (5 steps)
 
 | Step | What runs | Output |
 | ---- | --------- | ------ |
-| 1 | `scripts/prepare_demo_data.py` | `data/demo/` — first 100 frames of `neurofinder.00.00` with real labels |
+| 1 | `scripts/prepare_demo_data.py` | `data/demo/` — first 100 frames of `neurofinder.00.00`; also creates 70/30 temporal splits for H2 |
 | 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune + supervised baseline at 3 labeled-data fractions |
-| 3 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
-| 4 | `scripts/plot_results.py` | `output/figures/` — two result figures |
+| 3 | `main.py --mode train --H2 --config config.demo.yaml` | same checkpoint dir — cross-domain pretrain + target finetune + supervised baseline |
+| 4 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
+| 5 | `scripts/plot_results.py` | `output/figures/` — three result figures |
+
+> **H2 demo note:** The demo uses a temporal split of `neurofinder.00.00` (frames 0–69 as source, 70–99 as target) as a proxy for cross-domain transfer. For a scientifically valid H2 run, replace `source_data_dir` / `target_data_dir` in your config with two different organism datasets (e.g. `neurofinder.04.00` for zebrafish and `neurofinder.00.00` for mouse).
 
 ### Result figures
 
 **Figure 1 — `output/figures/h1_dice_comparison.png`**  
-Grouped bar chart: Dice score vs labeled-data fraction (10 %, 50 %, 100 %) comparing JEPA-pretrained fine-tuning against a supervised baseline trained from scratch. Shows whether self-supervised pretraining helps when labels are scarce.
+Grouped bar chart: Dice score vs labeled-data fraction (10 %, 50 %, 100 %) comparing JEPA-pretrained fine-tuning against a supervised baseline trained from scratch.
 
-**Figure 2 — `output/figures/segmentation_preview.png`**  
+**Figure 2 — `output/figures/h2_dice_comparison.png`**  
+Bar chart: Dice score on the target domain comparing JEPA pretrained transfer against a supervised baseline trained from scratch on the target domain.
+
+**Figure 3 — `output/figures/segmentation_preview.png`**  
 Side-by-side comparison of a raw calcium imaging frame and the predicted neuron segmentation overlay from the inference run.
 
 ### Inspect training logs

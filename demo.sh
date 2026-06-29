@@ -7,14 +7,17 @@
 #
 # Requires: data/neurofinder.00.00/ (download from the Neurofinder benchmark).
 #
-# What it does (4 steps):
-#   1. Prepare a 100-frame subset of neurofinder.00.00 as the demo dataset.
+# What it does (5 steps):
+#   1. Prepare a 100-frame subset of neurofinder.00.00 as the demo dataset
+#      (also creates 70/30 temporal splits for the H2 cross-domain experiment).
 #   2. Train JEPA on that data (H1 — pretrain + finetune, scaled to ~10 min on CPU).
-#   3. Run inference on a stacked TIFF and write segmentation output.
-#   4. Produce two result figures from the training and inference outputs.
+#   3. Train JEPA for cross-domain transfer (H2 — source pretrain + target finetune).
+#   4. Run inference on a stacked TIFF and write segmentation output.
+#   5. Produce result figures from the training and inference outputs.
 #
 # Output:
-#   output/figures/h1_dice_comparison.png  — Dice vs labeled-data fraction
+#   output/figures/h1_dice_comparison.png  — Dice vs labeled-data fraction (H1)
+#   output/figures/h2_dice_comparison.png  — Dice: pretrained vs baseline (H2)
 #   output/figures/segmentation_preview.png — raw frame + segmentation overlay
 
 set -euo pipefail
@@ -25,16 +28,16 @@ FIGURES_DIR="output/figures"
 
 # ── Step 1: Prepare real data subset ──────────────────────────────────────────
 echo ""
-echo "── Step 1/4  Preparing demo dataset (neurofinder.00.00, 100 frames) ─────"
+echo "── Step 1/5  Preparing demo dataset (neurofinder.00.00, 100 frames) ─────"
 uv run python scripts/prepare_demo_data.py \
     --source data/neurofinder.00.00 \
     --out data/demo \
     --stack-out data/demo_stacks \
     --frames 100
 
-# ── Step 2: Train (H1, scaled-down config) ────────────────────────────────────
+# ── Step 2: Train H1 (pretrain + finetune) ────────────────────────────────────
 echo ""
-echo "── Step 2/4  Training JEPA — H1 (pretrain + finetune) ───────────────────"
+echo "── Step 2/5  Training JEPA — H1 (pretrain + finetune) ───────────────────"
 uv run main.py \
     --mode train \
     --H1 \
@@ -42,9 +45,19 @@ uv run main.py \
     --output "$CHECKPOINTS_DIR" \
     --config config.demo.yaml
 
-# ── Step 3: Find best compound checkpoint ─────────────────────────────────────
+# ── Step 3: Train H2 (cross-domain transfer) ──────────────────────────────────
 echo ""
-echo "── Step 3/4  Running inference ───────────────────────────────────────────"
+echo "── Step 3/5  Training JEPA — H2 (cross-domain transfer) ─────────────────"
+uv run main.py \
+    --mode train \
+    --H2 \
+    --data data/demo \
+    --output "$CHECKPOINTS_DIR" \
+    --config config.demo.yaml
+
+# ── Step 4: Find best compound checkpoint ─────────────────────────────────────
+echo ""
+echo "── Step 4/5  Running inference ───────────────────────────────────────────"
 
 CHECKPOINT_PATH=$(python - <<'EOF'
 import json, sys
@@ -67,7 +80,6 @@ if not candidates:
     print("", file=sys.stderr)
     sys.exit(1)
 
-# pick the checkpoint with the highest val_dice; on tie, last by mtime
 best = max(candidates, key=lambda t: t[0])
 print(best[1])
 EOF
@@ -86,9 +98,9 @@ uv run main.py \
     --output "$INFERENCE_DIR" \
     --checkpoint "$CHECKPOINT_PATH"
 
-# ── Step 4: Plot results ───────────────────────────────────────────────────────
+# ── Step 5: Plot results ───────────────────────────────────────────────────────
 echo ""
-echo "── Step 4/4  Generating result figures ───────────────────────────────────"
+echo "── Step 5/5  Generating result figures ───────────────────────────────────"
 uv run python scripts/plot_results.py \
     --output "$FIGURES_DIR" \
     --inference-output "$INFERENCE_DIR" \
@@ -101,8 +113,12 @@ echo ""
 echo "  Figure 1 (H1 Dice comparison):"
 echo "    $FIGURES_DIR/h1_dice_comparison.png"
 echo ""
-echo "  Figure 2 (Segmentation preview):"
+echo "  Figure 2 (H2 Dice comparison):"
+echo "    $FIGURES_DIR/h2_dice_comparison.png"
+echo ""
+echo "  Figure 3 (Segmentation preview):"
 echo "    $FIGURES_DIR/segmentation_preview.png"
 echo ""
-echo "  MLflow UI:  uv run mlflow ui  →  http://localhost:5000"
+echo "  Training logs:"
+echo "    $CHECKPOINTS_DIR/logs/runs.csv"
 echo "════════════════════════════════════════════════════════"

@@ -89,19 +89,16 @@ def run_h2(state: State):
         f"| target={target_organism} ({target_dir})"
     )
 
-    organism_tags = {
-        "hypothesis": "H2",
-        "source_organism": source_organism,
-        "target_organism": target_organism,
-    }
+    log_path = output_dir / "logs" / "runs.csv"
 
     pretrained_path = pretrain(
         source_dir,
         cfg,
         output_dir,
         device,
-        mlflow_experiment="neuroseg-H2-pretrain",
-        base_tags={**organism_tags, "model_name": f"jepa_pretrained_h2_{source_organism}"},
+        model_name=f"jepa_pretrained_h2_{source_organism}",
+        log_path=log_path,
+        hypothesis="H2",
     )
 
     finetune(
@@ -112,8 +109,9 @@ def run_h2(state: State):
         output_dir=output_dir,
         device=device,
         mode="finetune",
-        mlflow_experiment="neuroseg-H2-finetune",
-        base_tags={**organism_tags, "model_name": f"jepa_h2_finetune_{target_organism}"},
+        model_name=f"jepa_h2_finetune_{target_organism}",
+        log_path=log_path,
+        hypothesis="H2",
     )
 
     finetune(
@@ -124,8 +122,9 @@ def run_h2(state: State):
         output_dir=output_dir,
         device=device,
         mode="supervised_baseline",
-        mlflow_experiment="neuroseg-H2-finetune",
-        base_tags={**organism_tags, "model_name": f"jepa_h2_supervised_{target_organism}"},
+        model_name=f"jepa_h2_supervised_{target_organism}",
+        log_path=log_path,
+        hypothesis="H2",
     )
 
     print("[H2] Done.")

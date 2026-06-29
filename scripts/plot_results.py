@@ -91,7 +91,54 @@ def plot_dice_comparison(results: dict, out_path: Path):
     print(f"Saved Figure 1: {out_path}")
 
 
-# ── Figure 2: segmentation preview ───────────────────────────────────────────
+# ── Figure 2: H2 Dice comparison ─────────────────────────────────────────────
+
+def _read_h2_csv(log_path: Path) -> dict | None:
+    import csv
+    if not log_path.exists():
+        return None
+    results: dict[str, float] = {}
+    with open(log_path, newline="") as f:
+        for row in csv.DictReader(f):
+            if row.get("hypothesis", "") != "H2":
+                continue
+            mode = row.get("mode", "")
+            dice_str = row.get("val_dice", "")
+            if mode in ("finetune", "supervised_baseline") and dice_str:
+                try:
+                    results[mode] = float(dice_str)
+                except ValueError:
+                    pass
+    return results if results else None
+
+
+def plot_h2_comparison(results: dict, out_path: Path):
+    modes = ["finetune", "supervised_baseline"]
+    labels = ["JEPA Pretrained", "Supervised Baseline"]
+    colors = ["#2196F3", "#FF9800"]
+    vals = [results.get(m, 0.0) for m in modes]
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    bars = ax.bar(labels, vals, color=colors, alpha=0.9, width=0.5)
+    for bar in bars:
+        h = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2, h + 0.015,
+            f"{h:.2f}", ha="center", va="bottom", fontsize=10,
+        )
+    ax.set_ylabel("Dice Score")
+    ax.set_title("H2 — Cross-domain Transfer\nDice Score on Target Domain")
+    ax.set_ylim(0, 1.1)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    plt.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(str(out_path), dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved Figure 2: {out_path}")
+
+
+# ── Figure 3: segmentation preview ───────────────────────────────────────────
 
 def _find_frame_png(inference_dir: Path) -> Path | None:
     seg_dir = inference_dir / "segmentation"
@@ -167,6 +214,10 @@ def main():
     results = _read_csv(args.logs)
     if results:
         plot_dice_comparison(results, args.output / "h1_dice_comparison.png")
+
+    h2_results = _read_h2_csv(args.logs)
+    if h2_results:
+        plot_h2_comparison(h2_results, args.output / "h2_dice_comparison.png")
 
     plot_segmentation_preview(args.inference_output, args.output / "segmentation_preview.png")
 

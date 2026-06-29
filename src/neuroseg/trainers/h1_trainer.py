@@ -112,6 +112,7 @@ def pretrain(
     device: torch.device,
     model_name: str = "jepa_pretrained_h1",
     log_path: Optional[Path] = None,
+    hypothesis: str = "H1",
 ) -> Optional[Path]:
     dataset = _make_unlabeled_dataset(data_dir, cfg)
     if len(dataset) == 0:
@@ -143,7 +144,7 @@ def pretrain(
 
     logger = RunLogger(
         log_path or output_dir / "logs" / "runs.csv",
-        hypothesis="H1", mode="pretrain", model_name=model_name,
+        hypothesis=hypothesis, mode="pretrain", model_name=model_name,
     )
 
     jepa.train()
@@ -178,7 +179,7 @@ def pretrain(
 
     checkpoint_path = save_checkpoint(
         jepa, model_name=model_name, run_id=logger.run_id,
-        output_dir=output_dir, metadata={"hypothesis": "H1", "mode": "pretrain"},
+        output_dir=output_dir, metadata={"hypothesis": hypothesis, "mode": "pretrain"},
     )
     print(f"Pretrained checkpoint: {checkpoint_path}")
     return checkpoint_path
@@ -216,6 +217,7 @@ def finetune(
     mode: str,
     model_name: Optional[str] = None,
     log_path: Optional[Path] = None,
+    hypothesis: str = "H1",
 ) -> dict:
     """
     Fine-tune or train a supervised baseline on labeled data.
@@ -260,7 +262,7 @@ def finetune(
 
     logger = RunLogger(
         log_path or output_dir / "logs" / "runs.csv",
-        hypothesis="H1", mode=mode, model_name=model_name,
+        hypothesis=hypothesis, mode=mode, model_name=model_name,
         labeled_fraction=fraction,
     )
 
@@ -304,7 +306,7 @@ def finetune(
         model_name=model_name,
         run_id=logger.run_id,
         output_dir=output_dir,
-        metadata={"hypothesis": "H1", "mode": mode, "labeled_fraction": fraction,
+        metadata={"hypothesis": hypothesis, "mode": mode, "labeled_fraction": fraction,
                   "dice": val_dice_score, "miou": val_miou_score},
     )
     logger.log(val_dice=val_dice_score, val_miou=val_miou_score,
