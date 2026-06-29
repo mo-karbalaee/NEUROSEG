@@ -3,7 +3,7 @@
 <img src="icon.png" width="120" align="right"/>
 
 **Neural segmentation pipeline for calcium imaging data.**  
-NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal somas in TIFF stacks, with a full training suite for evaluating three experimental hypotheses.
+NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal somas in TIFF stacks, with a full training suite for evaluating three experimental hypotheses (H1, H2, H3).
 
 ---
 
@@ -17,18 +17,20 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 - [Usage](#usage)
   - [Inference Mode](#inference-mode)
   - [Training Mode](#training-mode)
+  - [Config File Reference](#config-file-reference)
 - [Experiments](#experiments)
   - [H1 — Semi-supervised segmentation](#h1--semi-supervised-segmentation)
   - [H2 — Cross-organism transfer](#h2--cross-organism-transfer)
   - [H3 — Temporal representation stability](#h3--temporal-representation-stability)
 - [Outputs](#outputs)
 - [Experiment Logs](#experiment-logs)
+- [Continuous Integration](#continuous-integration)
 
 ---
 
 ## Reproduce in 20 Minutes
 
-`demo.sh` runs the full H1 and H2 pipelines end-to-end on CPU in approximately 45–60 minutes using a real subset of the Neurofinder benchmark dataset.
+`demo.sh` runs the full H1, H2, and H3 pipelines end-to-end on CPU using a real subset of the Neurofinder benchmark dataset.
 
 ### What you need
 
@@ -50,15 +52,16 @@ uv sync
 bash demo.sh
 ```
 
-### What happens (5 steps)
+### What happens (6 steps)
 
 | Step | What runs | Output |
 | ---- | --------- | ------ |
 | 1 | `scripts/prepare_demo_data.py` | `data/demo/` — first 100 frames of `neurofinder.00.00` (mouse); `data/demo_h2_source/` — first 100 frames of `neurofinder.04.00` (zebrafish) |
-| 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune + supervised baseline at 3 labeled-data fractions |
+| 2 | `main.py --mode train --H1 --config config.demo.yaml` | `output/demo_checkpoints/` — JEPA pretrain + finetune + supervised baseline at 3 labeled-data fractions; per-run training curve figures |
 | 3 | `main.py --mode train --H2 --config config.demo.yaml` | same checkpoint dir — cross-domain pretrain + target finetune + supervised baseline |
-| 4 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
-| 5 | `scripts/plot_results.py` | `output/figures/` — result figures (Dice + mIoU comparisons, segmentation preview) |
+| 4 | `main.py --mode train --H3 --config <temp>` | H3 similarity scores logged to `runs.csv`; `output/demo_checkpoints/figures/h3_similarity.png` |
+| 5 | `main.py --mode inference` | `output/demo_inference/` — segmentation masks and activity traces |
+| 6 | `scripts/plot_results.py` | `output/figures/` — result figures (Dice + mIoU comparisons, segmentation preview) |
 
 ### Result figures
 
@@ -76,6 +79,9 @@ Same layout as above, showing mIoU instead of Dice.
 
 **`output/figures/segmentation_preview.png`**  
 Side-by-side comparison of a raw calcium imaging frame and the predicted neuron segmentation overlay from the inference run.
+
+**`output/demo_checkpoints/figures/h3_similarity.png`**  
+Grouped bar chart of within-neuron vs between-neuron cosine similarity across three encoder modes (pretrained, supervised-baseline, random-init), plus a separation gap bar chart.
 
 **`output/demo_checkpoints/figures/`**  
 Per-run training curves generated automatically during training. Each fine-tune run produces a 2×2 figure (train loss, val Dice, val mIoU, final test-set bar); each pretrain run produces a 1×2 figure (JEPA loss and reconstruction loss).
@@ -184,6 +190,7 @@ NEUROSEG/
 ├── src/neuroseg/
 │   ├── pipeline.py                  # LangGraph pipeline definition
 │   ├── logger.py                    # CSV experiment logger
+│   ├── plots.py                     # Training curve and comparison figure generators
 │   ├── metrics.py                   # dice(), miou()
 │   ├── checkpoint.py                # checkpoint save / list
 │   ├── cli.py                       # interactive checkpoint picker
@@ -239,13 +246,60 @@ Select checkpoint [0-2]:
 
 ### Config File
 
-Any hyperparameter or hypothesis-specific path can be set in a YAML file and passed with `--config`. CLI flags always win over the file.
+Any hyperparameter can be set in a YAML file and passed with `--config`. CLI flags always win over the file.
 
 ```bash
 uv run main.py --mode train --H1 --data /path/to/data --output ./checkpoints --config config.yaml
 ```
 
-See [config.demo.yaml](config.demo.yaml) for all available keys.
+### Config File Reference
+
+All keys are optional — omitted keys use the defaults shown below.
+
+| Key | Default | Description |
+| --- | ------- | ----------- |
+| **Model architecture** | | |
+| `dobs` | `1` | Input channels (1 for single-channel calcium imaging) |
+| `henc` | `32` | Encoder hidden channels |
+| `hpre` | `32` | Predictor hidden channels |
+| `dstc` | `8` | Latent state channels |
+| `seg_head_hidden` | `16` | Segmentation head hidden channels |
+| `decoder_hidden_dim` | `16` | Pixel-reconstruction decoder hidden channels (pretrain only) |
+| `context_length` | `2` | JEPA predictor context window length |
+| **Loss / regularization** | | |
+| `std_coeff` | `10.0` | VICReg variance loss coefficient |
+| `cov_coeff` | `100.0` | VICReg covariance loss coefficient |
+| `std_margin` | `1.0` | Hinge margin for the variance loss |
+| **Data** | | |
+| `img_size` | `128` | Spatial resolution frames are resized to (px) |
+| `seq_len` | `10` | Number of frames per training clip |
+| `batch_size` | `8` | Training batch size |
+| `num_workers` | `2` | DataLoader worker processes (set `0` for notebooks / macOS) |
+| `val_split` | `0.1` | Fraction of data held out for validation |
+| `test_split` | `0.2` | Fraction of data held out for the final test evaluation |
+| **Training schedule** | | |
+| `lr` | `0.001` | Base learning rate |
+| `steps` | `4` | JEPA unroll steps per batch |
+| `seed` | `1` | Global random seed |
+| `pretrain_epochs` | `100` | Pretrain epochs (H1 / H2) |
+| `finetune_epochs` | `50` | Fine-tune / supervised-baseline epochs |
+| `finetune_budget` | *(same as `finetune_epochs`)* | Epoch budget for H2 target fine-tuning |
+| **H1-specific** | | |
+| `labeled_data_dir` | *(same as `--data`)* | Path to labeled data for fine-tuning |
+| `labeled_fractions` | `[0.01, 0.05, 0.1, 1.0]` | List of labeled-data fractions to sweep |
+| **H2-specific** | | |
+| `source_data_dir` | — | Source-organism data directory (pretrain domain) |
+| `target_data_dir` | — | Target-organism data directory (transfer domain) |
+| **H3-specific** | | |
+| `h3_data_dir` | *(same as `--data`)* | Labeled data directory for H3 similarity analysis |
+| `pretrained_ckpt` | — | Path to H1 pretrained JEPA checkpoint |
+| `supervised_ckpt` | — | Path to H1 supervised-baseline checkpoint |
+| **Inference** | | |
+| `seg_threshold` | `0.5` | Probability threshold for binary segmentation mask |
+| `f0_percentile` | `10` | Percentile used to estimate baseline fluorescence F₀ |
+| `dff_epsilon` | `1e-6` | Epsilon added to F₀ when computing ΔF/F₀ to avoid division by zero |
+
+See [config.demo.yaml](config.demo.yaml) for a complete working example with a small model suitable for CPU runs.
 
 ### Training Mode
 
@@ -270,9 +324,9 @@ uv run main.py \
 **Protocol:**
 
 1. Pretrain JEPA on unlabeled TIFF stacks.
-2. Fine-tune with 1 %, 5 %, 10 %, and 100 % of labeled data.
+2. Fine-tune with labeled-data fractions swept across 1 %, 5 %, 10 %, and 100 %.
 3. Train a supervised baseline from scratch under identical conditions (same architecture, random init).
-4. Compare Dice / mIoU curves across labeled-data fractions.
+4. Compare Dice / mIoU on the held-out test set across fractions.
 
 **Full run:**
 
@@ -310,7 +364,7 @@ labeled_data/
 1. Pretrain JEPA on the source-organism calcium imaging (unlabeled).
 2. Fine-tune on the target organism with a limited epoch budget.
 3. Train a supervised baseline from scratch on the target organism.
-4. Compare transfer drop (Dice / mIoU) between the two modes.
+4. Compare transfer drop (Dice / mIoU on test set) between the two modes.
 
 The organism label is inferred automatically from Neurofinder directory names (e.g., `neurofinder.04.00` → zebrafish, `neurofinder.00.00` → mouse.visual_cortex).
 
@@ -398,15 +452,19 @@ output/
 ```
 checkpoints/
   jepa_pretrained_h1_<run_id>.pt
-  jepa_pretrained_h1_<run_id>.json   ← metadata sidecar: date, test Dice, test mIoU
+  jepa_pretrained_h1_<run_id>.json   ← metadata sidecar: date, hypothesis, mode, arch
   jepa_h1_finetune_f10_<run_id>.pt
+  jepa_h1_finetune_f10_<run_id>.json ← metadata sidecar: date, mode, dice, miou, arch
   ...
   logs/
     runs.csv                         ← one row per epoch + one checkpoint summary row per run
   figures/
     pretrain_<model>_curves.png      ← JEPA loss and reconstruction loss over epochs
     finetune_<model>_curves.png      ← train loss, val Dice, val mIoU, final test scores
+    h3_similarity.png                ← within/between cosine similarity + gap (H3)
 ```
+
+The JSON sidecar files store enough information to reconstruct any checkpoint without opening the `.pt` file, including the full model architecture (`arch` dict) used at training time.
 
 ---
 
@@ -456,3 +514,9 @@ summary = (
 )
 print(summary)
 ```
+
+---
+
+## Continuous Integration
+
+Smoke tests run automatically on every push to `main` via GitHub Actions (`.github/workflows/smoke-tests.yml`). The workflow installs dependencies with `uv` and runs the full test suite — no GPU or real data required.
