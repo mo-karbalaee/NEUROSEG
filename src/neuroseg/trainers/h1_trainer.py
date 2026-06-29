@@ -247,8 +247,10 @@ def finetune(
     n = len(dataset)
     n_test = max(1, int(n * cfg.test_split))
     n_rem = n - n_test
-    n_val = max(1, int(n_rem * cfg.val_split))
-    n_train = max(1, n_rem - n_val)
+    n_val = int(n_rem * cfg.val_split)
+    n_train = n_rem - n_val
+    if n_train < 1 and n_val > 0:
+        n_train, n_val = 1, n_val - 1
     test_set, train_set, val_set = random_split(
         dataset, [n_test, n_train, n_val],
         generator=torch.Generator().manual_seed(cfg.seed),

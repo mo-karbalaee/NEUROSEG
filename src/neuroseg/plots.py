@@ -92,7 +92,8 @@ def plot_pretrain_curves(
                 color="#2196F3", linestyle="--", alpha=0.7)
     ax.set_title("JEPA Loss")
     ax.set_xlabel("Epoch")
-    ax.legend()
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend()
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
@@ -104,7 +105,8 @@ def plot_pretrain_curves(
                 color="#FF9800", linestyle="--", alpha=0.7)
     ax.set_title("Reconstruction Loss")
     ax.set_xlabel("Epoch")
-    ax.legend()
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend()
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 

@@ -39,6 +39,8 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 
 Both are available from the [Neurofinder benchmark](https://github.com/codeneuro/neurofinder).
 
+You can also find a subset of the neurofinder dataset on this [Kaggle dataset](https://www.kaggle.com/datasets/mokarbalaee/neurofinder-mini)
+
 ### One-command demo
 
 ```bash

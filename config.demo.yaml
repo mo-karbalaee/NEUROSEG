@@ -19,8 +19,8 @@ val_split: 0.2
 lr: 0.001
 steps: 4              # JEPA unroll steps
 seed: 42
-pretrain_epochs: 50
-finetune_epochs: 20
+pretrain_epochs: 5
+finetune_epochs: 5
 
 # ── H1 specific ───────────────────────────────────────────────────────────────
 labeled_data_dir: data/demo
@@ -32,4 +32,4 @@ labeled_fractions: [0.1, 0.5, 1.0]
 # target: mouse visual cortex (data/demo, same as H1) — transfer domain
 source_data_dir: data/demo_h2_source
 target_data_dir: data/demo
-finetune_budget: 20
+finetune_budget: 5
