@@ -520,3 +520,10 @@ print(summary)
 ## Continuous Integration
 
 Smoke tests run automatically on every push to `main` via GitHub Actions (`.github/workflows/smoke-tests.yml`). The workflow installs dependencies with `uv` and runs the full test suite — no GPU or real data required.
+
+
+## Experiment Results on HPC
+
+Here is a list of previous experiment runs on Kaggle. 
+
+- [H2: v0.2.2](https://www.kaggle.com/code/mokarbalaee/h2-experiment?scriptVersionId=331196131)
