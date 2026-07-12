@@ -112,8 +112,14 @@ mouse barrel cortex.)*
 - **Also flagged — pretraining overfits:** JEPA train loss fell 4.65 → 0.41, but **val JEPA loss diverged** from ~0.9 (epoch 13) up to 3.37 (epoch 19). The non-mouse pool (after the 5 GB cap + `pretrain_clip_stride=10`) is small, so the encoder overfits. Levers: include the big zebrafish file (raise the cap), lower the clip stride for more clips, or stop earlier / save best-val.
 - **Next:** get the transfer number — probe the saved encoder on mouse (locally on the downloaded checkpoint, or re-run Kaggle with the fix): pretrained vs from-scratch.
 
+### 2026-07-12 · Step 12 — Skip-pretraining flow + `--data`-required argparse bug (Kaggle v4).
+- **Added `--pretrained-ckpt` reuse path:** to avoid re-running the 77-min pretrain, `run_h2` now accepts an already-trained JEPA checkpoint — it reads the architecture from the checkpoint's `.json` sidecar (`with_suffix(".json")`, so pass the `.pt`), skips pretraining, and goes straight to the pretrained-vs-from-scratch mouse probe. Requires only `--pretrained-ckpt` + `--target-data`; `--source-data` no longer needed. Checkpoint to reuse: `output/H2.v3/jepa_pretrained_h2_56f2880d.pt` (+ its `.json`). Notebook updated to this command (commit b1f5ded).
+- **What broke (v4):** the run died at **argument parsing**, before any code — `main.py: error: the following arguments are required: --data`. `--data` was globally `required=True`, but H2 uses `--source-data`/`--target-data` and ignores `--data` entirely, so the parser rejected the skip-pretraining command outright.
+- **Fixed** (commit bf28107): `--data` is now optional; it is required for H1/H3/inference (validated in `main()` with a clear message) but not for H2. `run()` passes `--output` as a harmless stand-in data_dir for H2, and `pipeline.run` guards `iterdir` so a missing data_dir can't crash. Also corrected the stale `--pretrained-ckpt` help text (it said "(H3)"; it is an H2 flag).
+- **Next:** re-clone `main` on Kaggle and re-run the probe cell (no edits) — get the pretrained-vs-from-scratch mouse Dice/mIoU.
+
 ### Status
-Cross-species pipeline runs end-to-end except the (now-fixed) probe device bug. Pretraining **overfits** on the small non-mouse pool — a transfer-quality concern. Next: read the pretrained-vs-from-scratch mouse probe result.
+Cross-species pipeline runs end-to-end; the probe device bug (Step 11) and the `--data` argparse bug (Step 12) are both fixed. A `--pretrained-ckpt` flow now lets Kaggle reuse the saved encoder and jump straight to the mouse probe. Pretraining **overfits** on the small non-mouse pool — a transfer-quality concern. Next: read the pretrained-vs-from-scratch mouse probe result.
 
 ---
 
