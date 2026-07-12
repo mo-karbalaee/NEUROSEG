@@ -331,6 +331,10 @@ class NeurofinderDataset(Dataset):
     labeled_fraction : float
         Fraction of temporal clips to keep, sampled reproducibly.
         Useful for H1's labeled-fraction ablation.
+    exclude_dirs : list[str | Path] | None
+        Neurofinder directories to drop from the pool (resolved-path match).
+        Used to hold a recording out of self-supervised pretraining so it stays
+        unseen for downstream fine-tuning/testing (H1 leakage control).
     """
 
     def __init__(
@@ -343,6 +347,7 @@ class NeurofinderDataset(Dataset):
         seed: int = 0,
         binarize: bool = True,
         clip_stride: int | None = None,
+        exclude_dirs: list[str | Path] | None = None,
     ):
         self.seq_len = seq_len
         self.img_size = img_size
@@ -351,6 +356,9 @@ class NeurofinderDataset(Dataset):
         stride = clip_stride or seq_len
 
         nf_dirs = find_neurofinder_dirs(data_dir)
+        if exclude_dirs:
+            excluded = {Path(d).resolve() for d in exclude_dirs}
+            nf_dirs = [d for d in nf_dirs if d.resolve() not in excluded]
         if not nf_dirs:
             raise ValueError(f"No Neurofinder directories found under {data_dir}")
 

@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from tqdm import tqdm
 
 from neuroseg.checkpoint import save_checkpoint, save_compound_checkpoint, save_latest_checkpoint
@@ -103,12 +103,15 @@ def build_config(state: State) -> H1Config:
     return cfg
 
 
-def _make_unlabeled_dataset(data_dir: str, cfg: H1Config) -> Dataset:
+def _make_unlabeled_dataset(
+    data_dir: str, cfg: H1Config, exclude_dirs: Optional[list] = None
+) -> Dataset:
     """Create an unlabeled dataset from either Neurofinder or plain TIFF files."""
     if is_neurofinder_dir(data_dir) or find_neurofinder_dirs(data_dir):
         return NeurofinderDataset(
             data_dir, cfg.seq_len, cfg.img_size,
             labeled=False, clip_stride=cfg.pretrain_clip_stride,
+            exclude_dirs=exclude_dirs,
         )
     return VideoFolderDataset(
         data_dir, cfg.seq_len, cfg.img_size, clip_stride=cfg.pretrain_clip_stride,
@@ -143,9 +146,14 @@ def pretrain(
     model_name: str = "jepa_pretrained_h1",
     log_path: Optional[Path] = None,
     hypothesis: str = "H1",
+    exclude_dirs: Optional[list] = None,
 ) -> Optional[Path]:
-    """Self-supervised JEPA pretraining on unlabeled data; returns the checkpoint path."""
-    dataset = _make_unlabeled_dataset(data_dir, cfg)
+    """Self-supervised JEPA pretraining on unlabeled data; returns the checkpoint path.
+
+    exclude_dirs holds recordings out of pretraining (e.g. the held-out test
+    recording) so the self-supervised step never sees the downstream test data.
+    """
+    dataset = _make_unlabeled_dataset(data_dir, cfg, exclude_dirs=exclude_dirs)
     if len(dataset) == 0:
         print("No clips found for pretraining — skipping.")
         return None
@@ -279,21 +287,28 @@ def finetune(
         print(f"Labeled data not found at {labeled_path} — skipping {mode} f={fraction}")
         return {}
 
-    dataset = _make_labeled_dataset(labeled_data_dir, cfg, fraction)
-    if len(dataset) == 0:
-        print(f"No labeled clips — skipping {mode} f={fraction}")
+    dataset = _make_labeled_dataset(labeled_data_dir, cfg, fraction=1.0)
+    if len(dataset) < 3:
+        print(f"Too few labeled clips ({len(dataset)}) — skipping {mode} f={fraction}")
         return {}
 
     n = len(dataset)
+    perm = torch.randperm(n, generator=torch.Generator().manual_seed(cfg.seed)).tolist()
     n_test = max(1, int(n * cfg.test_split))
-    n_rem = n - n_test
-    n_val = int(n_rem * cfg.val_split)
-    n_train = n_rem - n_val
-    if n_train < 1 and n_val > 0:
-        n_train, n_val = 1, n_val - 1
-    test_set, train_set, val_set = random_split(
-        dataset, [n_test, n_train, n_val],
-        generator=torch.Generator().manual_seed(cfg.seed),
+    test_idx = perm[:n_test]
+    pool = perm[n_test:]
+    n_val = max(1, int(len(pool) * cfg.val_split))
+    val_idx = pool[:n_val]
+    train_pool = pool[n_val:]
+    k = max(1, int(fraction * len(train_pool)))
+    train_idx = train_pool[:k]
+
+    test_set = Subset(dataset, test_idx)
+    val_set = Subset(dataset, val_idx)
+    train_set = Subset(dataset, train_idx)
+    print(
+        f"[{mode}] f={fraction} | clips={n} test={len(test_set)} (fixed) "
+        f"val={len(val_set)} train={len(train_set)}/{len(train_pool)}"
     )
     train_loader = DataLoader(train_set, batch_size=cfg.batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False)
@@ -419,12 +434,18 @@ def run_h1(state: State):
     fractions = state.get("config", {}).get("labeled_fractions", cfg.labeled_fractions)
     log_path = output_dir / "logs" / "runs.csv"
 
-    print(f"[H1] device={device} | data={data_dir} | output={output_dir}")
+    exclude = [labeled_data_dir] if labeled_data_dir else None
+    print(
+        f"[H1] device={device} | data={data_dir} | output={output_dir}\n"
+        f"[H1] pretrain excludes the test recording (unseen by SSL): {labeled_data_dir or '(none)'}\n"
+        f"[H1] finetune/baseline + fixed 80/20 test split operate only on: {labeled_data_dir or '(none)'}"
+    )
 
     pretrained_path = pretrain(
         data_dir, cfg, output_dir, device,
         model_name="jepa_pretrained_h1",
         log_path=log_path,
+        exclude_dirs=exclude,
     )
 
     for fraction in fractions:
