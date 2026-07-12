@@ -89,7 +89,7 @@ def probe_on_target(pretrained_ckpt, target_dir: str, cfg: H1Config, device: tor
             s = dataset[int(i)]
             x = s["video"].unsqueeze(0).to(device)
             feats.append(encoder(x).mean(dim=2).squeeze(0))
-            masks.append((s["mask"][0] > 0).float().unsqueeze(0))
+            masks.append((s["mask"][0] > 0).float().unsqueeze(0).to(device))
         return feats, masks
 
     ftr, mtr = features(train_idx)
