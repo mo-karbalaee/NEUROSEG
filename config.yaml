@@ -34,3 +34,6 @@ pretrain_clip_stride: 10     # > seq_len: non-overlapping + frame subsample — 
 # ── H1: semi-supervised segmentation ──────────────────────────────────────────
 labeled_fractions: [0.1, 0.5, 0.75, 1.0]
 finetune_encoder_lr_scale: 1.0   # encoder LR during fine-tuning = lr * this (1.0 = same LR as the supervised baseline)
+
+# ── H2: cross-organism transfer ───────────────────────────────────────────────
+finetune_budget: 10              # limited fine-tuning epochs on the target organism (H2 only; H1 ignores this)

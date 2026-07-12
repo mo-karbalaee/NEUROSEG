@@ -166,9 +166,10 @@ def run_h3(state: State):
 
     At least one of the three modes will always run (no_pretrain needs no checkpoint).
 
-    MLflow tags
-    -----------
-    hypothesis=H3, mode={pretrained | supervised_baseline | no_pretrain}
+    Logging
+    -------
+    Results are appended to <output>/logs/runs.csv with hypothesis=H3 and
+    mode in {pretrained, supervised_baseline, no_pretrain}.
     """
     cfg = build_config(state)
     setup_seed(cfg.seed)

@@ -63,10 +63,11 @@ def run_h2(state: State):
     target_data_dir : str  — target-organism directory (e.g. Neurofinder 00–03 for mouse)
     finetune_budget : int  — fine-tuning epochs on target organism (default 10)
 
-    MLflow tags
-    -----------
-    hypothesis=H2, source_organism={inferred}, target_organism={inferred},
-    mode={pretrain | finetune | supervised_baseline}
+    Logging
+    -------
+    All runs are appended to <output>/logs/runs.csv with hypothesis=H2 and
+    mode in {pretrain, finetune, supervised_baseline}; the source and target
+    organisms are inferred from the Neurofinder directory names.
     """
     cfg = _build_h2_config(state)
     setup_seed(cfg.seed)
