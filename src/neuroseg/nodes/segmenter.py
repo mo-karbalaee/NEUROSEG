@@ -23,8 +23,25 @@ def _filter_small_components(labeled: np.ndarray, min_size: int) -> np.ndarray:
     return relabeled
 
 
-def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
-    """Run frame-by-frame segmentation using a loaded JEPA encoder and seg head."""
+def _normalize_frame(frame: np.ndarray) -> np.ndarray:
+    """Min-max normalize a single frame to [0, 1], matching the training data pipeline."""
+    f = frame.astype(np.float32)
+    if f.ndim == 3:
+        f = f[:, :, 0]
+    mn, mx = float(f.min()), float(f.max())
+    return (f - mn) / (mx - mn + 1e-8)
+
+
+def _jepa_segment(data: np.ndarray, checkpoint_path: str, window: int = 5) -> tuple[list, None]:
+    """
+    Segment a stack with a loaded JEPA encoder + seg head.
+
+    Matches the training-time input pipeline: each frame is min-max normalized to
+    [0, 1], and encoder features are averaged over a temporal window (default 5)
+    before the head — the same temporal aggregation used during fine-tuning. Feeding
+    raw, unnormalized single frames (the previous behavior) put the encoder far out of
+    its trained input range and made it flood ~45% of the frame with mask.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     payload = load_compound_checkpoint(Path(checkpoint_path))
@@ -40,29 +57,29 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
     seg_head.eval()
 
     seg_threshold = arch.get("seg_threshold", 0.5)
-    min_size = max(9, (img_size * img_size) // 100)
 
     T = data.shape[0]
-    masks = []
+    frame0 = data[0] if data[0].ndim == 2 else data[0][:, :, 0]
+    H, W = frame0.shape[:2]
+    min_size = max(9, (H * W) // 8000)
 
+    features = []
     with torch.no_grad():
         for t in range(T):
-            frame = data[t]
-            if frame.ndim == 3:
-                frame = frame[:, :, 0]
-            H, W = frame.shape
+            frame = _normalize_frame(data[t])
+            frame = cv2.resize(frame, (img_size, img_size), interpolation=cv2.INTER_LINEAR)
+            x = torch.from_numpy(frame).float().view(1, 1, 1, img_size, img_size).to(device)
+            features.append(jepa.encoder(x)[:, :, 0])
 
-            frame_resized = cv2.resize(frame.astype(np.float32), (img_size, img_size),
-                                       interpolation=cv2.INTER_LINEAR)
-            x = torch.from_numpy(frame_resized).float()
-            x = x.unsqueeze(0).unsqueeze(0).unsqueeze(0).to(device)
-
-            enc_state = jepa.encoder(x)
-            enc_mean = enc_state[:, :, 0]
-            pred = seg_head(enc_mean)
+    half = window // 2
+    masks = []
+    with torch.no_grad():
+        for t in range(T):
+            a, b = max(0, t - half), min(T, t + half + 1)
+            feat = torch.cat(features[a:b], dim=0).mean(dim=0, keepdim=True)
+            pred = seg_head(feat)
             pred = F.interpolate(pred, size=(H, W), mode="bilinear", align_corners=False)
             binary = (pred.squeeze().cpu().numpy() > seg_threshold).astype(np.uint8)
-
             labeled = _filter_small_components(connected_components(binary)[0], min_size)
             masks.append(labeled)
 

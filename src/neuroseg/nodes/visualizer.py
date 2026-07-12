@@ -1,51 +1,63 @@
 from pathlib import Path
-from typing import Optional
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
 from neuroseg.models.state import State
 
 
-def _show_mask_overlay(ax: plt.Axes, frame: np.ndarray, mask: np.ndarray):
-    """Render a grayscale frame with a semi-transparent colored mask overlay."""
-    ax.imshow(frame, cmap="gray")
-    if mask.max() > 0:
-        colored = np.zeros((*frame.shape[:2], 4), dtype=np.float32)
+def _to_gray_uint8(frame: np.ndarray) -> np.ndarray:
+    """Return a single-channel 0–255 uint8 view of a frame, contrast-stretched."""
+    f = frame.astype(np.float32)
+    if f.ndim == 3:
+        f = f[:, :, 0]
+    lo, hi = float(f.min()), float(f.max())
+    if hi > lo:
+        f = (f - lo) / (hi - lo) * 255.0
+    return f.astype(np.uint8)
+
+
+def _overlay_frame(frame: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """Draw per-neuron contour outlines over a grayscale frame; return an RGB uint8 image."""
+    gray = _to_gray_uint8(frame)
+    rgb = np.stack([gray] * 3, axis=-1).astype(np.uint8)
+    if mask is not None and mask.max() > 0:
         for label_id in range(1, int(mask.max()) + 1):
-            region = mask == label_id
-            color = plt.cm.tab20(label_id % 20)
-            colored[region] = [*color[:3], 0.5]
-        ax.imshow(colored)
-    ax.axis("off")
+            region = (mask == label_id).astype(np.uint8)
+            if not region.any():
+                continue
+            color = tuple(int(c * 255) for c in plt.cm.tab20(label_id % 20)[:3])
+            contours, _ = cv2.findContours(region, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(rgb, contours, -1, color, 1)
+    return rgb
 
 
 def _visualize_segmentation(
     data: np.ndarray,
     masks,
-    flows: Optional[list],
     output_dir: str,
     file_name: str,
+    fps: int = 10,
 ):
-    """Save a per-frame segmentation overlay PNG for every frame in the stack."""
-    out = Path(output_dir) / "segmentation" / file_name
+    """Write one MP4 of the segmentation overlay for the whole stack (one frame per time step)."""
+    out = Path(output_dir) / "segmentation"
     out.mkdir(parents=True, exist_ok=True)
+    video_path = out / f"{file_name}.mp4"
 
-    for t in range(data.shape[0]):
-        frame = data[t] if data[t].ndim == 2 else data[t][:, :, 0]
+    T = data.shape[0]
+    first = _overlay_frame(data[0], masks[0])
+    h, w = first.shape[:2]
+    writer = cv2.VideoWriter(str(video_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
 
-        if flows is not None:
-            from cellpose import plot
-            fig = plt.figure(figsize=(8, 8))
-            plot.show_segmentation(fig, frame, masks[t], flows[t][0])
-            plt.title(f"Frame {t}")
-        else:
-            fig, ax = plt.subplots(figsize=(8, 8))
-            _show_mask_overlay(ax, frame, masks[t])
-            ax.set_title(f"Frame {t}")
+    for t in range(T):
+        rgb = _overlay_frame(data[t], masks[t])
+        cv2.putText(rgb, f"frame {t}", (8, 22), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6, (255, 255, 255), 1, cv2.LINE_AA)
+        writer.write(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
 
-        plt.savefig(str(out / f"frame_{t}.png"), dpi=100, bbox_inches="tight")
-        plt.close(fig)
+    writer.release()
+    print(f"[video] {video_path} ({T} frames @ {fps} fps)")
 
 
 def _visualize_traces(traces: np.ndarray, output_dir: str, file_name: str):
@@ -94,7 +106,7 @@ def _save_individual_traces(traces: np.ndarray, output_dir: str, file_name: str)
 def visualizer_node(state: State) -> dict:
     """Produce all segmentation and trace visualizations for the current file."""
     _visualize_segmentation(
-        state["data"], state["masks"], state["flows"], state["output_dir"], state["file_name"]
+        state["data"], state["masks"], state["output_dir"], state["file_name"]
     )
     _visualize_traces(state["traces"], state["output_dir"], state["file_name"])
     _save_individual_traces(state["traces"], state["output_dir"], state["file_name"])
