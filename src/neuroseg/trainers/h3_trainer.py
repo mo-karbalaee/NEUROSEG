@@ -30,7 +30,7 @@ def _load_encoder(checkpoint_path: Optional[str], cfg: H1Config, device: torch.d
     if isinstance(payload, dict) and payload.get("type") == "neuroseg_jepa_v1":
         arch = payload.get("arch", cfg.arch_dict())
         jepa = build_jepa(arch, device)
-        jepa.load_state_dict(payload["jepa"])
+        jepa.load_state_dict(payload["jepa"], strict=False)
     else:
         arch = cfg.arch_dict()
         sidecar = path.with_suffix(".json")
@@ -39,7 +39,7 @@ def _load_encoder(checkpoint_path: Optional[str], cfg: H1Config, device: torch.d
             if "arch" in sidecar_meta:
                 arch = sidecar_meta["arch"]
         jepa = build_jepa(arch, device)
-        jepa.load_state_dict(payload)
+        jepa.load_state_dict(payload, strict=False)
 
     return jepa
 

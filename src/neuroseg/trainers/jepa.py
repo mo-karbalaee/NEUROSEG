@@ -286,14 +286,38 @@ class SquareLossSeq(nn.Module):
 
 
 class JEPA(nn.Module):
-    def __init__(self, encoder, aencoder, predictor, regularizer, predcost):
+    def __init__(self, encoder, aencoder, predictor, regularizer, predcost,
+                 target_encoder=None, ema_momentum=0.996):
         super().__init__()
         self.encoder = encoder
         self.action_encoder = aencoder
         self.predictor = predictor
         self.regularizer = regularizer
         self.predcost = predcost
+        self.target_encoder = target_encoder
+        self.ema_momentum = ema_momentum
+        if self.target_encoder is not None:
+            for p in self.target_encoder.parameters():
+                p.requires_grad = False
         self.single_unroll = getattr(self.predictor, "is_rnn", False)
+
+    @torch.no_grad()
+    def update_target(self):
+        """EMA-update the target encoder toward the online encoder; no-op if absent."""
+        if self.target_encoder is None:
+            return
+        m = self.ema_momentum
+        for pe, pt in zip(self.encoder.parameters(), self.target_encoder.parameters()):
+            pt.data.mul_(m).add_(pe.data, alpha=1 - m)
+        for be, bt in zip(self.encoder.buffers(), self.target_encoder.buffers()):
+            bt.data.copy_(be.data)
+
+    def _target_state(self, observations):
+        """Return stop-gradient target embeddings from the EMA encoder, or the online state."""
+        if self.target_encoder is None:
+            return None
+        with torch.no_grad():
+            return self.target_encoder(observations)
 
     def unroll(
         self,
@@ -307,6 +331,9 @@ class JEPA(nn.Module):
     ):
         """Encode observations and roll out the predictor for nsteps in parallel or autoregressive mode."""
         state = self.encoder(observations)
+        target = self._target_state(observations)
+        if target is None:
+            target = state
         context_length = getattr(self.predictor, "context_length", 0)
 
         if compute_loss:
@@ -328,7 +355,7 @@ class JEPA(nn.Module):
                     (state[:, :, :context_length], predicted_states), dim=2
                 )
                 if compute_loss:
-                    ploss += self.predcost(state, predicted_states) / nsteps
+                    ploss += self.predcost(target, predicted_states) / nsteps
 
         elif unroll_mode == "autoregressive":
             if actions is not None and nsteps > actions.size(2):
@@ -347,7 +374,7 @@ class JEPA(nn.Module):
                 if return_all_steps:
                     all_steps.append(predicted_states.clone())
                 if compute_loss:
-                    ploss += self.predcost(pred_step, state[:, :, i + 1 : i + 2]) / nsteps
+                    ploss += self.predcost(pred_step, target[:, :, i + 1 : i + 2]) / nsteps
         else:
             raise ValueError(f"Unknown unroll_mode: {unroll_mode}")
 
@@ -370,14 +397,20 @@ def build_jepa(arch: dict, device: torch.device) -> "JEPA":
     std_coeff = arch.get("std_coeff", 10.0)
     cov_coeff = arch.get("cov_coeff", 100.0)
     std_margin = arch.get("std_margin", 1.0)
+    ema_momentum = arch.get("ema_momentum", 0.996)
 
     encoder = ResNet5(dobs, henc, dstc)
+    target_encoder = ResNet5(dobs, henc, dstc)
+    target_encoder.load_state_dict(encoder.state_dict())
     predictor_model = ResUNet(2 * dstc, hpre, dstc)
     predictor = StateOnlyPredictor(predictor_model, context_length=context_length)
     projector = Projector(f"{dstc}-{dstc * 4}-{dstc * 4}")
     regularizer = VCLoss(std_coeff, cov_coeff, proj=projector, std_margin=std_margin)
     ploss_fn = SquareLossSeq(projector)
-    return JEPA(encoder, encoder, predictor, regularizer, ploss_fn).to(device)
+    return JEPA(
+        encoder, encoder, predictor, regularizer, ploss_fn,
+        target_encoder=target_encoder, ema_momentum=ema_momentum,
+    ).to(device)
 
 
 def build_seg_head(dstc: int, hidden: int = 16) -> nn.Sequential:

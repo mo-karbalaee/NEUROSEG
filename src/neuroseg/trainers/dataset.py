@@ -104,10 +104,11 @@ class TIFFVideoDataset(Dataset):
     Accepts a list of multi-frame TIFF stack paths.
     """
 
-    def __init__(self, file_paths: list[str], seq_len: int, img_size: int):
+    def __init__(self, file_paths: list[str], seq_len: int, img_size: int, clip_stride: int | None = None):
         self.seq_len = seq_len
         self.img_size = img_size
         self.clips: list[np.ndarray] = []
+        stride = clip_stride or seq_len
 
         for path in file_paths:
             video = _normalize(_load_tiff(path))
@@ -117,7 +118,7 @@ class TIFFVideoDataset(Dataset):
                 padded[:T] = video
                 self.clips.append(padded)
             else:
-                for start in range(0, T - seq_len + 1, seq_len):
+                for start in range(0, T - seq_len + 1, stride):
                     self.clips.append(video[start : start + seq_len])
 
     def __len__(self) -> int:
@@ -240,11 +241,13 @@ class NeurofinderDataset(Dataset):
         labeled_fraction: float = 1.0,
         seed: int = 0,
         binarize: bool = True,
+        clip_stride: int | None = None,
     ):
         self.seq_len = seq_len
         self.img_size = img_size
         self.labeled = labeled
         self.binarize = binarize
+        stride = clip_stride or seq_len
 
         nf_dirs = find_neurofinder_dirs(data_dir)
         if not nf_dirs:
@@ -268,7 +271,7 @@ class NeurofinderDataset(Dataset):
                 padded[:T] = video
                 self.clips.append((padded, mask))
             else:
-                for start in range(0, T - seq_len + 1, seq_len):
+                for start in range(0, T - seq_len + 1, stride):
                     self.clips.append((video[start : start + seq_len], mask))
 
         if labeled_fraction < 1.0:

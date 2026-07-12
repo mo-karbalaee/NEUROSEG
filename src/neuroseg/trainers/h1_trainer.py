@@ -29,7 +29,7 @@ from neuroseg.trainers.jepa import (
     build_seg_head,
 )
 
-LABELED_FRACTIONS = [0.01, 0.05, 0.10, 1.0]
+LABELED_FRACTIONS = [0.1, 0.5, 0.75, 1.0]
 
 
 @dataclass
@@ -46,6 +46,7 @@ class H1Config:
     std_coeff: float = 10.0
     cov_coeff: float = 100.0
     std_margin: float = 1.0
+    ema_momentum: float = 0.996
     context_length: int = 2
     decoder_hidden_dim: int = 16
     seg_threshold: float = 0.5
@@ -59,6 +60,7 @@ class H1Config:
     labeled_fractions: list[float] = field(default_factory=lambda: list(LABELED_FRACTIONS))
     val_split: float = 0.1
     test_split: float = 0.2
+    pretrain_clip_stride: Optional[int] = None
 
     def arch_dict(self) -> dict:
         """Return architecture hyperparameters as a dict suitable for saving in checkpoints."""
@@ -73,6 +75,7 @@ class H1Config:
             "std_coeff": self.std_coeff,
             "cov_coeff": self.cov_coeff,
             "std_margin": self.std_margin,
+            "ema_momentum": self.ema_momentum,
             "decoder_hidden_dim": self.decoder_hidden_dim,
             "seg_threshold": self.seg_threshold,
         }
@@ -99,9 +102,14 @@ def build_config(state: State) -> H1Config:
 def _make_unlabeled_dataset(data_dir: str, cfg: H1Config) -> Dataset:
     """Create an unlabeled dataset from either Neurofinder or plain TIFF files."""
     if is_neurofinder_dir(data_dir) or find_neurofinder_dirs(data_dir):
-        return NeurofinderDataset(data_dir, cfg.seq_len, cfg.img_size, labeled=False)
+        return NeurofinderDataset(
+            data_dir, cfg.seq_len, cfg.img_size,
+            labeled=False, clip_stride=cfg.pretrain_clip_stride,
+        )
     file_paths = [str(p) for p in sorted(Path(data_dir).iterdir()) if p.is_file()]
-    return TIFFVideoDataset(file_paths, cfg.seq_len, cfg.img_size)
+    return TIFFVideoDataset(
+        file_paths, cfg.seq_len, cfg.img_size, clip_stride=cfg.pretrain_clip_stride,
+    )
 
 
 def _make_labeled_dataset(
@@ -183,6 +191,7 @@ def pretrain(
             recon_loss = pixel_decoder(x, x)
             (jepa_loss + recon_loss).backward()
             optimizer.step()
+            jepa.update_target()
 
             epoch_jepa += jepa_loss.item()
             epoch_recon += recon_loss.item()
@@ -282,7 +291,7 @@ def finetune(
     jepa = build_jepa(cfg.arch_dict(), device)
     if mode == "finetune" and pretrained_checkpoint is not None:
         state_dict = torch.load(str(pretrained_checkpoint), map_location=device, weights_only=True)
-        jepa.load_state_dict(state_dict)
+        jepa.load_state_dict(state_dict, strict=False)
 
     seg_head = build_seg_head(cfg.dstc, cfg.seg_head_hidden).to(device)
     encoder_lr = cfg.lr / 10 if mode == "finetune" else cfg.lr

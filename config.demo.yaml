@@ -25,7 +25,7 @@ finetune_epochs: 10
 # ── H1 specific ───────────────────────────────────────────────────────────────
 labeled_data_dir: data/demo
 
-labeled_fractions: [0.1, 0.5, 1.0]
+labeled_fractions: [0.1, 0.5, 0.75, 1.0]
 
 # ── H2 specific ───────────────────────────────────────────────────────────────
 # source: zebrafish (neurofinder.04.00 subset) — pretrain domain

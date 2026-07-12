@@ -22,8 +22,19 @@ seed: 1
 val_split: 0.1
 
 # ── H1: semi-supervised segmentation ─────────────────────────────────────────
-labeled_data_dir: /path/to/neurofinder/labeled
-labeled_fractions: [0.01, 0.05, 0.10, 1.0]
+# For a valid H1 test, pretrain on a LARGE unlabeled pool and fine-tune on a
+# SMALLER labeled target. Point --data at a parent folder containing the whole
+# Neurofinder benchmark (all datasets are pooled) and set labeled_data_dir to
+# the single target set that the labeled-fraction sweep runs on.
+labeled_data_dir: /path/to/neurofinder.00.00
+labeled_fractions: [0.1, 0.5, 0.75, 1.0]
+
+# Overlapping clips multiply the unlabeled pretraining pool (stride < seq_len).
+# Leave unset for non-overlapping clips. Only affects pretraining data.
+pretrain_clip_stride: 2
+
+# EMA target-encoder momentum for JEPA pretraining (higher = slower target).
+ema_momentum: 0.996
 
 # ── H2: cross-organism transfer ───────────────────────────────────────────────
 source_data_dir: /path/to/neurofinder.04    # zebrafish (source)

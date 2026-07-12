@@ -32,7 +32,7 @@ def _jepa_segment(data: np.ndarray, checkpoint_path: str) -> tuple[list, None]:
     img_size = arch.get("img_size", 128)
 
     jepa = build_jepa(arch, device)
-    jepa.load_state_dict(payload["jepa"])
+    jepa.load_state_dict(payload["jepa"], strict=False)
     jepa.eval()
 
     seg_head = build_seg_head(arch["dstc"], arch.get("seg_head_hidden", 16)).to(device)
