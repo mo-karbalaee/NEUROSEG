@@ -425,3 +425,56 @@ def plot_h2_drop(log_path: Path, figures_dir: Path) -> None:
     plt.savefig(str(out), dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {out}")
+
+
+def plot_h2_probe(log_path: Path, figures_dir: Path) -> None:
+    """Bar charts of the mouse linear-probe Dice/mIoU: JEPA-pretrained encoder vs from-scratch (H2)."""
+    import matplotlib.pyplot as plt
+
+    if not log_path.exists():
+        return
+    res: dict[str, dict[str, float]] = {}
+    with open(log_path, newline="") as f:
+        for row in csv.DictReader(f):
+            if row.get("hypothesis", "") != "H2":
+                continue
+            mode = row.get("mode", "")
+            if mode in ("pretrained", "from_scratch") and row.get("target_dice", "") != "":
+                res[mode] = {
+                    "dice": _safe_float(row.get("target_dice", "")) or 0.0,
+                    "miou": _safe_float(row.get("target_miou", "")) or 0.0,
+                }
+    if not res:
+        print(f"No H2 probe results in {log_path} — skipping H2 probe plot.")
+        return
+
+    modes = ["pretrained", "from_scratch"]
+    labels = ["JEPA-pretrained\n(non-mouse)", "From-scratch"]
+    colors = ["#2196F3", "#FF9800"]
+
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    for metric, ylabel, filename in [
+        ("dice", "Dice Score", "h2_probe_dice.png"),
+        ("miou", "mIoU",       "h2_probe_miou.png"),
+    ]:
+        vals = [res.get(m, {}).get(metric, 0.0) for m in modes]
+        fig, ax = plt.subplots(figsize=(6.5, 5))
+        bars = ax.bar(labels, vals, color=colors, alpha=0.9, width=0.5)
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
+                    f"{h:.2f}", ha="center", va="bottom", fontsize=10)
+        ax.set_ylabel(f"{ylabel} (held-out mouse)")
+        ax.set_title(
+            f"H2 — Cross-species Transfer\n{ylabel} on Mouse (linear probe on frozen encoder)",
+            fontsize=11,
+        )
+        ax.set_ylim(0, 1.05)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        plt.tight_layout()
+
+        out = figures_dir / filename
+        plt.savefig(str(out), dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved: {out}")

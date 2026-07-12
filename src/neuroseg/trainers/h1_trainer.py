@@ -17,7 +17,7 @@ from neuroseg.models.state import State
 from neuroseg.trainers.dataset import (
     LabeledTIFFDataset,
     NeurofinderDataset,
-    TIFFVideoDataset,
+    VideoFolderDataset,
     is_neurofinder_dir,
     find_neurofinder_dirs,
 )
@@ -109,9 +109,8 @@ def _make_unlabeled_dataset(data_dir: str, cfg: H1Config) -> Dataset:
             data_dir, cfg.seq_len, cfg.img_size,
             labeled=False, clip_stride=cfg.pretrain_clip_stride,
         )
-    file_paths = [str(p) for p in sorted(Path(data_dir).iterdir()) if p.is_file()]
-    return TIFFVideoDataset(
-        file_paths, cfg.seq_len, cfg.img_size, clip_stride=cfg.pretrain_clip_stride,
+    return VideoFolderDataset(
+        data_dir, cfg.seq_len, cfg.img_size, clip_stride=cfg.pretrain_clip_stride,
     )
 
 

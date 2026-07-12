@@ -30,6 +30,41 @@ def _normalize(data: np.ndarray) -> np.ndarray:
     return (data - mn) / (mx - mn + 1e-8)
 
 
+def _iter_frames(path: str):
+    """Yield frames as 2-D float32 arrays from a multi-frame TIFF or Zeiss CZI (.czi/.sec) video."""
+    ext = Path(path).suffix.lower()
+    if ext in (".czi", ".sec"):
+        import czifile
+        arr = np.squeeze(czifile.imread(str(path)))
+        if arr.ndim == 2:
+            arr = arr[np.newaxis]
+        elif arr.ndim > 3:
+            arr = arr.reshape((-1,) + arr.shape[-2:])
+        for i in range(arr.shape[0]):
+            yield np.asarray(arr[i], dtype=np.float32)
+    else:
+        with tiff.TiffFile(str(path)) as tf:
+            n_pages = len(tf.pages)
+            if n_pages > 1:
+                for page in tf.pages:
+                    a = page.asarray()
+                    if a.ndim == 3:
+                        a = a[..., 0]
+                    yield a.astype(np.float32)
+                return
+        try:
+            arr = tiff.memmap(str(path))
+        except Exception:
+            arr = tiff.imread(str(path))
+        arr = np.squeeze(arr)
+        if arr.ndim == 2:
+            arr = arr[np.newaxis]
+        elif arr.ndim > 3:
+            arr = arr.reshape((-1,) + arr.shape[-2:])
+        for i in range(arr.shape[0]):
+            yield np.asarray(arr[i], dtype=np.float32)
+
+
 def _resize_frames(frames: np.ndarray, img_size: int, interpolation: int) -> np.ndarray:
     """Resize every frame in a (T, H, W) array to (img_size, img_size)."""
     return np.stack([
@@ -124,6 +159,67 @@ class TIFFVideoDataset(Dataset):
         if clip.shape[-1] != self.img_size or clip.shape[-2] != self.img_size:
             clip = _resize_frames(clip, self.img_size, cv2.INTER_LINEAR)
         return {"video": torch.from_numpy(clip).unsqueeze(0).float()}
+
+
+class VideoFolderDataset(Dataset):
+    """
+    Unlabeled dataset for JEPA pretraining from a folder of raw video files.
+
+    Reads multi-frame TIFF stacks and Zeiss CZI files (``.czi`` / ``.sec``) found at
+    any depth under ``data_dir``. Each frame is resized to ``img_size`` on load, so
+    memory stays bounded regardless of the source file sizes.
+
+    A stack whose frame width is an exact integer multiple of its height (>1) is
+    treated as that many z-planes stacked side-by-side and split into separate
+    square videos — e.g. an ETL 6-plane 512×3072 stack becomes six 512×512 videos.
+    """
+
+    def __init__(self, data_dir: str, seq_len: int, img_size: int,
+                 clip_stride: int | None = None, split_planes: bool = True):
+        self.seq_len = seq_len
+        self.img_size = img_size
+        stride = clip_stride or seq_len
+        exts = (".tif", ".tiff", ".czi", ".sec")
+        files = sorted(p for p in Path(data_dir).rglob("*") if p.suffix.lower() in exts)
+        if not files:
+            raise ValueError(f"No .tif/.czi/.sec video files found under {data_dir}")
+
+        self.clips: list[np.ndarray] = []
+        for f in files:
+            planes: list[list[np.ndarray]] | None = None
+            plane_w = 0
+            for frame in _iter_frames(str(f)):
+                h, w = frame.shape[-2], frame.shape[-1]
+                if planes is None:
+                    n = w // h if (split_planes and w > h and w % h == 0 and w // h > 1) else 1
+                    plane_w = w // n
+                    planes = [[] for _ in range(n)]
+                for pi in range(len(planes)):
+                    sub = frame[:, pi * plane_w:(pi + 1) * plane_w]
+                    if sub.shape[-1] != img_size or sub.shape[-2] != img_size:
+                        sub = cv2.resize(sub, (img_size, img_size), interpolation=cv2.INTER_LINEAR)
+                    planes[pi].append(sub)
+
+            for pv in planes or []:
+                if not pv:
+                    continue
+                video = _normalize(np.stack(pv))
+                T = video.shape[0]
+                if T < seq_len:
+                    padded = np.zeros((seq_len, img_size, img_size), dtype=video.dtype)
+                    padded[:T] = video
+                    self.clips.append(padded)
+                else:
+                    for s in range(0, T - seq_len + 1, stride):
+                        self.clips.append(video[s:s + seq_len])
+
+    def __len__(self) -> int:
+        """Return the number of temporal clips across all video files."""
+        return len(self.clips)
+
+    def __getitem__(self, idx: int) -> dict:
+        """Return a dict with a 'video' tensor of shape (1, seq_len, H, W)."""
+        return {"video": torch.from_numpy(self.clips[idx]).unsqueeze(0).float()}
 
 
 class LabeledTIFFDataset(Dataset):
