@@ -87,7 +87,11 @@ def run(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    file_paths = [str(p) for p in sorted(data_dir.iterdir()) if p.is_file()]
+    file_paths = (
+        [str(p) for p in sorted(data_dir.iterdir()) if p.is_file()]
+        if data_dir.is_dir()
+        else []
+    )
     if mode == Mode.INFERENCE:
         print(f"Found {len(file_paths)} file(s) in {data_dir}")
 

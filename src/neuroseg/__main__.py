@@ -28,9 +28,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data",
         type=Path,
-        required=True,
+        default=None,
         metavar="DIR",
-        help="Directory of TIFF stacks (training data or inference input).",
+        help="Directory of TIFF stacks (training data or inference input). "
+             "Required except for H2, which uses --source-data/--target-data.",
     )
     parser.add_argument(
         "--output",
@@ -93,7 +94,7 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         metavar="FILE",
-        help="(H3) Path to pretrained JEPA checkpoint.",
+        help="(H2) Path to an already-trained JEPA checkpoint; skips pretraining and probes directly.",
     )
     parser.add_argument(
         "--config",
@@ -131,6 +132,9 @@ def main():
         else:
             hypothesis = Hypothesis.H3
 
+    if args.data is None and hypothesis != Hypothesis.H2:
+        raise SystemExit("--data is required (except for --H2, which uses --source-data/--target-data).")
+
     checkpoint_path = None
     if mode == Mode.INFERENCE:
         if args.checkpoint:
@@ -156,7 +160,7 @@ def main():
         config["pretrained_ckpt"] = str(args.pretrained_ckpt)
 
     run(
-        data_dir=args.data,
+        data_dir=args.data or args.output,
         output_dir=args.output,
         mode=mode,
         hypothesis=hypothesis,
