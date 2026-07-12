@@ -60,6 +60,31 @@ def save_compound_checkpoint(
     return path
 
 
+def save_latest_checkpoint(
+    model,
+    model_name: str,
+    run_id: str,
+    output_dir: Path,
+    arch: Optional[dict] = None,
+    metadata: Optional[dict] = None,
+) -> Path:
+    """Overwrite a rolling '<name>_<run_id>_latest.pt' checkpoint for crash recovery during long runs."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    path = output_dir / f"{model_name}_{run_id}_latest.pt"
+    torch.save(model.state_dict(), path)
+
+    meta = {"model_name": model_name, "run_id": run_id, "date": datetime.now().isoformat()}
+    if metadata:
+        meta.update(metadata)
+    if arch:
+        meta["arch"] = arch
+    with open(path.with_suffix(".json"), "w") as f:
+        json.dump(meta, f, indent=2)
+    return path
+
+
 def load_compound_checkpoint(path: Path) -> dict:
     """Load and validate a compound checkpoint saved by save_compound_checkpoint."""
     payload = torch.load(str(path), map_location="cpu", weights_only=False)

@@ -10,7 +10,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
 
-from neuroseg.checkpoint import save_checkpoint, save_compound_checkpoint
+from neuroseg.checkpoint import save_checkpoint, save_compound_checkpoint, save_latest_checkpoint
 from neuroseg.logger import RunLogger
 from neuroseg.metrics import dice, miou
 from neuroseg.models.state import State
@@ -57,6 +57,7 @@ class H1Config:
     finetune_encoder_lr_scale: float = 0.1
     pretrain_epochs: int = 100
     finetune_epochs: int = 50
+    checkpoint_every: int = 0
     steps: int = 4
     seed: int = 1
     labeled_fractions: list[float] = field(default_factory=lambda: list(LABELED_FRACTIONS))
@@ -207,6 +208,13 @@ def pretrain(
             train_recon_loss=epoch_recon / n_batches,
             **val_metrics,
         )
+
+        if cfg.checkpoint_every and (epoch + 1) % cfg.checkpoint_every == 0:
+            save_latest_checkpoint(
+                jepa, model_name, logger.run_id, output_dir,
+                arch=cfg.arch_dict(),
+                metadata={"hypothesis": hypothesis, "mode": "pretrain", "epoch": epoch},
+            )
 
     checkpoint_path = save_checkpoint(
         jepa, model_name=model_name, run_id=logger.run_id,

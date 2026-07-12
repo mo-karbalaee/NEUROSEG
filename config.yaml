@@ -20,15 +20,16 @@ test_split: 0.2
 
 # ── Training schedule ─────────────────────────────────────────────────────────
 lr: 0.001
-pretrain_epochs: 100
-finetune_epochs: 100
+pretrain_epochs: 20
+finetune_epochs: 40
 steps: 4
 seed: 1
+checkpoint_every: 5          # save a rolling 'latest' pretrain checkpoint every N epochs (crash recovery); 0 disables
 
 # ── JEPA self-supervision ─────────────────────────────────────────────────────
 ema_momentum: 0.996          # EMA target-encoder momentum (anti-collapse)
 recon_coeff: 1.0             # weight on the pixel-reconstruction loss that shapes the encoder
-pretrain_clip_stride: 2      # overlapping clips multiply the unlabeled pretraining pool
+pretrain_clip_stride: 10     # > seq_len: non-overlapping + frame subsample — large I/O cut per epoch
 
 # ── H1: semi-supervised segmentation ──────────────────────────────────────────
 labeled_fractions: [0.1, 0.5, 0.75, 1.0]
