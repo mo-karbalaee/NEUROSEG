@@ -64,19 +64,6 @@ def find_neurofinder_dirs(data_dir: str | Path) -> list[Path]:
 # Neurofinder loaders
 # ---------------------------------------------------------------------------
 
-def _load_nf_video(nf_dir: Path) -> np.ndarray:
-    """Load all TIFF frames from a Neurofinder images/ directory into a single array."""
-    img_dir = nf_dir / "images"
-    paths = sorted(img_dir.glob("*.tiff")) or sorted(img_dir.glob("*.tif"))
-    frames = []
-    for p in paths:
-        frame = np.array(Image.open(str(p))).astype(np.float32)
-        if frame.ndim == 3:
-            frame = frame[:, :, 0]
-        frames.append(frame)
-    return np.stack(frames)
-
-
 def _build_nf_mask(nf_dir: Path, orig_h: int, orig_w: int, img_size: int) -> np.ndarray:
     """
     Build a pixel-accurate integer-labeled mask from regions.json.
@@ -259,42 +246,67 @@ class NeurofinderDataset(Dataset):
         if not nf_dirs:
             raise ValueError(f"No Neurofinder directories found under {data_dir}")
 
-        self.clips: list[tuple[np.ndarray, np.ndarray | None]] = []
+        self._videos: list[dict] = []
+        self.index: list[tuple[int, int]] = []
 
         for nf_dir in nf_dirs:
-            raw = _load_nf_video(nf_dir)
-            orig_h, orig_w = raw.shape[1], raw.shape[2]
+            img_dir = nf_dir / "images"
+            paths = sorted(img_dir.glob("*.tiff")) or sorted(img_dir.glob("*.tif"))
+            if not paths:
+                continue
 
-            video = _normalize(raw)
-            if video.shape[-1] != img_size or video.shape[-2] != img_size:
-                video = _resize_frames(video, img_size, cv2.INTER_LINEAR)
-
+            first = np.array(Image.open(str(paths[0])))
+            orig_h, orig_w = first.shape[0], first.shape[1]
             mask = _build_nf_mask(nf_dir, orig_h, orig_w, img_size) if labeled else None
 
-            T = video.shape[0]
+            v_idx = len(self._videos)
+            self._videos.append({"paths": paths, "mask": mask})
+
+            T = len(paths)
             if T < seq_len:
-                padded = np.zeros((seq_len, *video.shape[1:]), dtype=video.dtype)
-                padded[:T] = video
-                self.clips.append((padded, mask))
+                self.index.append((v_idx, 0))
             else:
                 for start in range(0, T - seq_len + 1, stride):
-                    self.clips.append((video[start : start + seq_len], mask))
+                    self.index.append((v_idx, start))
+
+        if not self.index:
+            raise ValueError(f"No image frames found under {data_dir}")
 
         if labeled_fraction < 1.0:
             rng = np.random.default_rng(seed)
-            n = max(1, int(len(self.clips) * labeled_fraction))
-            idx = rng.choice(len(self.clips), size=n, replace=False)
-            self.clips = [self.clips[i] for i in sorted(idx)]
+            n = max(1, int(len(self.index) * labeled_fraction))
+            keep = rng.choice(len(self.index), size=n, replace=False)
+            self.index = [self.index[i] for i in sorted(keep)]
 
     def __len__(self) -> int:
         """Return the number of temporal clips across all loaded Neurofinder datasets."""
-        return len(self.clips)
+        return len(self.index)
+
+    def _load_clip(self, paths: list, start: int) -> np.ndarray:
+        """Lazily read seq_len frames from disk, normalize, resize, and zero-pad if short."""
+        frames = []
+        for p in paths[start : start + self.seq_len]:
+            frame = np.array(Image.open(str(p))).astype(np.float32)
+            if frame.ndim == 3:
+                frame = frame[:, :, 0]
+            frames.append(frame)
+        clip = _normalize(np.stack(frames))
+        if clip.shape[-1] != self.img_size or clip.shape[-2] != self.img_size:
+            clip = _resize_frames(clip, self.img_size, cv2.INTER_LINEAR)
+        if clip.shape[0] < self.seq_len:
+            padded = np.zeros((self.seq_len, self.img_size, self.img_size), dtype=clip.dtype)
+            padded[: clip.shape[0]] = clip
+            clip = padded
+        return clip
 
     def __getitem__(self, idx: int) -> dict:
         """Return a dict with 'video' and optionally 'mask' tensors for the given clip."""
-        clip, mask = self.clips[idx]
+        v_idx, start = self.index[idx]
+        video = self._videos[v_idx]
+        clip = self._load_clip(video["paths"], start)
         video_t = torch.from_numpy(clip).unsqueeze(0).float()
 
+        mask = video["mask"]
         if mask is None or not self.labeled:
             return {"video": video_t}
 
