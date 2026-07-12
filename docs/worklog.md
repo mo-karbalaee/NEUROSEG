@@ -59,11 +59,16 @@ supervised ones? Source = zebrafish (neurofinder.04.00), target = mouse (00.00).
 - **Result:** both models nailed the source (Dice ~0.96–0.97) but **both flatlined on the target** (Dice **0.04** JEPA vs **0.03** supervised). Drop ≈ 0.94. (mIoU showed ~0.42 for both, but that is just the background class — the models predict essentially *empty* masks on mouse, which the Dice≈0 confirms.)
 - **Takeaway:** **strict zero-shot cross-organism transfer was too harsh** — zebrafish and mouse are too different (intensity, neuron size/density, scale), so a small model sees mouse as fully out-of-distribution and predicts nothing above threshold. Both models sit at the floor, so the experiment **can't discriminate** which representation transfers better (0.04 vs 0.03 is noise). Not a bug — the same pipeline gets 0.96 on source.
 
-### 2026-07-12 · Step 4 — Planned: linear-probe on target ("minimal changes").
-- **Plan:** instead of *zero* adaptation, do the minimal one — **freeze each source-trained encoder and train only a fresh segmentation head on a small slice of target labels**. This lifts both models off the floor and measures *representation transfer* directly; if JEPA's features are more organism-general, the frozen-encoder probe reaches higher mouse Dice than the supervised encoder's. This is the standard way SSL transfer is measured, and it matches the intended "minimal changes to reuse the model on organism 2." Keep pure zero-shot too, to show the contrast.
+### 2026-07-12 · Step 4 — Diagnose the floor (threshold sweep, AUPRC, AdaBN).
+- **Tried:** on the source-trained checkpoints, evaluated on mouse with a threshold sweep, threshold-free **AUPRC**, and **AdaBN** (recompute BatchNorm stats on unlabeled mouse). In-domain sanity: the same pipeline scores the JEPA model on zebrafish at Dice **0.96** / AUPRC **0.99** (chance 0.12), so the eval is correct.
+- **Result (mouse):** **AUPRC ≈ chance for both** — JEPA **0.157**, supervised **0.151** vs chance **0.164**. AdaBN barely moved it (→0.158 / 0.164); best-threshold Dice only ~0.10. JEPA ≈ supervised.
+- **Takeaway:** the floor is **real, not an artifact**. The cheap fixes (thresholding, BatchNorm recalibration) recover nothing — the source-trained models produce essentially **noise** on mouse (their output carries no information about mouse neuron locations). Neither representation transfers zero-shot. Script: `scripts/h2_transfer_diagnostics.py`.
+
+### 2026-07-12 · Step 5 — Planned: linear-probe on target ("minimal changes").
+- **Why still worth it:** the Step-4 diagnostic tested the full model (encoder + *zebrafish* head). AUPRC-at-chance shows the zebrafish head can't decode mouse — it does **not** prove the *encoder features* are useless. A linear probe (**freeze encoder, train only a fresh head on a small slice of mouse labels**) tests exactly whether the encoder features transfer, and whether JEPA's are more organism-general than supervised. If the probe also floors, zebrafish→mouse is too far a transfer for this model → escalate to a closer pair (mouse→mouse), augmentation, or multi-organism pretraining.
 
 ### Status
-Zero-shot done (both floor). Next run: add the target linear-probe to reveal signal.
+Zero-shot floors (confirmed real). Next: build + run the target linear-probe.
 
 ---
 
@@ -75,3 +80,4 @@ pretrained / supervised / random encoders. Post-hoc — needs H1 checkpoints fir
 
 ### Status
 Not yet run this cycle. Blocked on a good H1 pretrained checkpoint from the re-run.
+
