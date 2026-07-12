@@ -141,6 +141,10 @@ def run_h2(state: State):
     source_data_dir : str  — non-mouse pretraining video directory (TIFF and/or CZI)
     target_data_dir : str  — labeled mouse Neurofinder directory (probe target)
     probe_fraction  : float — fraction of target labels used to train the probe head (default 0.1)
+    pretrained_ckpt : str  — (optional, via --pretrained-ckpt) path to an already-trained JEPA
+                             checkpoint; when given, pretraining is skipped and its architecture
+                             is read from the checkpoint's JSON sidecar. source_data_dir is then
+                             not required.
 
     Logging
     -------
@@ -156,23 +160,40 @@ def run_h2(state: State):
 
     source_dir = extra.get("source_data_dir", "")
     target_dir = extra.get("target_data_dir", "")
-    if not source_dir:
-        raise ValueError("H2 requires 'source_data_dir' (via --source-data): the non-mouse pretraining video.")
+    pretrained_ckpt = extra.get("pretrained_ckpt")
+
     if not target_dir:
         raise ValueError("H2 requires 'target_data_dir' (via --target-data): the labeled mouse target.")
+    if not pretrained_ckpt and not source_dir:
+        raise ValueError(
+            "H2 requires 'source_data_dir' (via --source-data) to pretrain, or "
+            "'pretrained_ckpt' (via --pretrained-ckpt) to reuse an already-trained JEPA checkpoint."
+        )
 
     probe_fraction = float(extra.get("probe_fraction", 0.1))
     log_path = output_dir / "logs" / "runs.csv"
 
-    print(
-        f"[H2] device={device} | pretrain(source)={source_dir} "
-        f"| probe(target)={target_dir} | probe_fraction={probe_fraction}"
-    )
-
-    pretrained_path = pretrain(
-        source_dir, cfg, output_dir, device,
-        model_name="jepa_pretrained_h2", log_path=log_path, hypothesis="H2",
-    )
+    if pretrained_ckpt:
+        import json
+        sidecar = Path(pretrained_ckpt).with_suffix(".json")
+        if sidecar.exists():
+            for k, v in json.loads(sidecar.read_text()).get("arch", {}).items():
+                if hasattr(cfg, k):
+                    setattr(cfg, k, v)
+        pretrained_path = str(pretrained_ckpt)
+        print(
+            f"[H2] device={device} | reusing pretrained checkpoint (skipping pretraining): "
+            f"{pretrained_path} | probe(target)={target_dir} | probe_fraction={probe_fraction}"
+        )
+    else:
+        print(
+            f"[H2] device={device} | pretrain(source)={source_dir} "
+            f"| probe(target)={target_dir} | probe_fraction={probe_fraction}"
+        )
+        pretrained_path = pretrain(
+            source_dir, cfg, output_dir, device,
+            model_name="jepa_pretrained_h2", log_path=log_path, hypothesis="H2",
+        )
 
     for mode, ckpt in [("pretrained", pretrained_path), ("from_scratch", None)]:
         metrics = probe_on_target(ckpt, target_dir, cfg, device, probe_fraction)
