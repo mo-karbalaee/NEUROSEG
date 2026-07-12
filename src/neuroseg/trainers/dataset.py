@@ -115,8 +115,8 @@ def _build_nf_mask(nf_dir: Path, orig_h: int, orig_w: int, img_size: int) -> np.
     mask = np.zeros((img_size, img_size), dtype=np.int32)
     for neuron_id, region in enumerate(regions, start=1):
         coords = np.array(region["coordinates"])
-        xs = np.clip((coords[:, 0] * img_size / orig_w).astype(int), 0, img_size - 1)
-        ys = np.clip((coords[:, 1] * img_size / orig_h).astype(int), 0, img_size - 1)
+        ys = np.clip((coords[:, 0] * img_size / orig_h).astype(int), 0, img_size - 1)
+        xs = np.clip((coords[:, 1] * img_size / orig_w).astype(int), 0, img_size - 1)
         mask[ys, xs] = neuron_id
 
     return mask
