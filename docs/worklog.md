@@ -67,8 +67,14 @@ supervised ones? Source = zebrafish (neurofinder.04.00), target = mouse (00.00).
 ### 2026-07-12 · Step 5 — Planned: linear-probe on target ("minimal changes").
 - **Why still worth it:** the Step-4 diagnostic tested the full model (encoder + *zebrafish* head). AUPRC-at-chance shows the zebrafish head can't decode mouse — it does **not** prove the *encoder features* are useless. A linear probe (**freeze encoder, train only a fresh head on a small slice of mouse labels**) tests exactly whether the encoder features transfer, and whether JEPA's are more organism-general than supervised. If the probe also floors, zebrafish→mouse is too far a transfer for this model → escalate to a closer pair (mouse→mouse), augmentation, or multi-organism pretraining.
 
+### 2026-07-12 · Step 6 — Linear probe. Also floors — the *features* don't transfer.
+- **Tried:** froze each source-trained encoder, trained a fresh seg head on 1/5/10% of mouse labels, evaluated on held-out mouse. In-domain sanity: the same probe on zebrafish recovers Dice **0.95–0.96**, so the probe method works.
+- **Result (mouse):** **Dice 0.000 at every fraction, for both** JEPA and supervised. Not a training artifact — the in-domain probe is 0.95.
+- **Takeaway:** the deepest form of the negative result. The zebrafish encoder features carry **no usable mouse-neuron information at all**, even given a fresh mouse-trained head — so it is not the head, not calibration, not BatchNorm, not a bug. The representation is fully organism-specific, for both SSL and supervised. **Zebrafish→mouse is too far a domain gap for this model**; there is no signal on this pair to distinguish the two representations. Script: `scripts/h2_linear_probe.py`.
+- **Decision — pivot:** (a) test a **closer pair** (mouse→mouse) to reach a regime with signal and characterize transfer vs domain distance; and/or (b) **multi-organism JEPA pretraining** (pretrain on several organisms, probe a held-out one) — where SSL's cross-organism advantage should appear.
+
 ### Status
-Zero-shot floors (confirmed real). Next: build + run the target linear-probe.
+Zebrafish→mouse transfer fully characterized as a hard negative (zero-shot AND linear-probe both floor, verified real). Next: rerun H2 on a closer organism pair, and/or set up multi-organism pretraining.
 
 ---
 
