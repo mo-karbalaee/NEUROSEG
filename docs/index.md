@@ -16,6 +16,7 @@ Technical and scientific documentation for the NEUROSEG neural segmentation pipe
 | [Configuration](configuration.md) | All CLI flags, all YAML config keys, demo config, HPC and notebook settings |
 | [HPC](hpc.md) | Running training on FAU's HPC (NHR@FAU / TinyGPU + Alex): access, Slurm job scripts, environment setup, data staging |
 | [H1 deep-dive](h1/index.md) | Full technical reference for the H1 experiment: architecture, JEPA pretraining, supervised fine-tuning, data/protocol, metrics, and the results-and-fixes history |
+| [Worklog](worklog.md) | Running lab notebook: step-by-step of what was tried per hypothesis, results, and takeaways |
 | [Codebase](codebase.md) | Directory layout, module responsibilities, dependency graph, entry points, test coverage |
 
 ## Quick orientation
