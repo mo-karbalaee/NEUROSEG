@@ -373,7 +373,7 @@ def finetune(
     from neuroseg.plots import plot_finetune_curves
     plot_finetune_curves(actual_log_path, logger.run_id, model_name, output_dir / "figures")
 
-    return {"dice": test_dice_score, "miou": test_miou_score}
+    return {"dice": test_dice_score, "miou": test_miou_score, "checkpoint": str(checkpoint_path)}
 
 
 @torch.inference_mode()

@@ -36,4 +36,6 @@ labeled_fractions: [0.1, 0.5, 0.75, 1.0]
 finetune_encoder_lr_scale: 1.0   # encoder LR during fine-tuning = lr * this (1.0 = same LR as the supervised baseline)
 
 # ── H2: cross-organism transfer ───────────────────────────────────────────────
-finetune_budget: 10              # limited fine-tuning epochs on the target organism (H2 only; H1 ignores this)
+# H2 trains both models on the SOURCE organism (--source-data) and evaluates them
+# zero-shot on the TARGET organism (--target-data). It reuses finetune_epochs above
+# as the source-training length; no target fine-tuning, so no extra keys needed.

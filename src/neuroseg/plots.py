@@ -35,7 +35,7 @@ def _read_h1_results(log_path: Path) -> dict | None:
 
 
 def _read_h2_results(log_path: Path) -> dict | None:
-    """Parse the runs CSV and return per-mode Dice/mIoU scores for H2."""
+    """Return per-model source and zero-shot target Dice/mIoU for H2 (from transfer summary rows)."""
     if not log_path.exists():
         return None
     results: dict[str, dict[str, float]] = {}
@@ -44,16 +44,14 @@ def _read_h2_results(log_path: Path) -> dict | None:
             if row.get("hypothesis", "") != "H2":
                 continue
             mode = row.get("mode", "")
-            dice_str = row.get("test_dice", "") or row.get("val_dice", "")
-            miou_str = row.get("test_miou", "") or row.get("val_miou", "")
-            if mode in ("finetune", "supervised_baseline") and dice_str:
-                try:
-                    results[mode] = {
-                        "dice": float(dice_str),
-                        "miou": float(miou_str) if miou_str else 0.0,
-                    }
-                except ValueError:
-                    pass
+            if mode not in ("finetune", "supervised_baseline") or row.get("target_dice", "") == "":
+                continue
+            results[mode] = {
+                "source_dice": _safe_float(row.get("test_dice", "")) or 0.0,
+                "source_miou": _safe_float(row.get("test_miou", "")) or 0.0,
+                "target_dice": _safe_float(row.get("target_dice", "")) or 0.0,
+                "target_miou": _safe_float(row.get("target_miou", "")) or 0.0,
+            }
     return results if results else None
 
 
@@ -337,23 +335,23 @@ def plot_h1_dice(log_path: Path, figures_dir: Path) -> None:
         print(f"Saved: {out}")
 
 
-def plot_h2_dice(log_path: Path, figures_dir: Path) -> None:
-    """Plot H2 Dice and mIoU bar charts comparing cross-organism transfer methods."""
+def plot_h2_target(log_path: Path, figures_dir: Path) -> None:
+    """Bar charts of zero-shot target-organism Dice/mIoU: JEPA-pretrained vs supervised (H2)."""
     import matplotlib.pyplot as plt
 
     results = _read_h2_results(log_path)
     if not results:
-        print(f"No H2 results in {log_path} — skipping H2 plot.")
+        print(f"No H2 results in {log_path} — skipping H2 target plot.")
         return
 
-    modes  = ["finetune", "supervised_baseline"]
-    labels = ["JEPA Pretrained", "Supervised Baseline"]
+    modes = ["finetune", "supervised_baseline"]
+    labels = ["JEPA-pretrained", "Supervised"]
     colors = ["#2196F3", "#FF9800"]
 
     figures_dir.mkdir(parents=True, exist_ok=True)
     for metric, ylabel, filename in [
-        ("dice", "Dice Score", "h2_dice_comparison.png"),
-        ("miou", "mIoU",       "h2_miou_comparison.png"),
+        ("target_dice", "Dice Score", "h2_target_dice.png"),
+        ("target_miou", "mIoU",       "h2_target_miou.png"),
     ]:
         vals = [results.get(m, {}).get(metric, 0.0) for m in modes]
 
@@ -363,8 +361,11 @@ def plot_h2_dice(log_path: Path, figures_dir: Path) -> None:
             h = bar.get_height()
             ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
                     f"{h:.2f}", ha="center", va="bottom", fontsize=10)
-        ax.set_ylabel(f"{ylabel} (test set)")
-        ax.set_title(f"H2 — Cross-organism Transfer\n{ylabel} on Target Organism", fontsize=12)
+        ax.set_ylabel(f"{ylabel} (target, zero-shot)")
+        ax.set_title(
+            f"H2 — Cross-organism Transfer\n{ylabel} on Target Organism (trained on Source)",
+            fontsize=12,
+        )
         ax.set_ylim(0, 1.1)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
@@ -376,162 +377,51 @@ def plot_h2_dice(log_path: Path, figures_dir: Path) -> None:
         print(f"Saved: {out}")
 
 
-def _latest_h2_run_id(log_path: Path, mode: str) -> str | None:
-    """Return the most recent H2 run_id for the given mode (finetune / supervised_baseline)."""
-    if not log_path.exists():
-        return None
-    run_id = None
-    with open(log_path, newline="") as f:
-        for row in csv.DictReader(f):
-            if row.get("hypothesis", "") == "H2" and row.get("mode", "") == mode:
-                run_id = row.get("run_id", "") or run_id
-    return run_id
-
-
-def plot_h2_convergence(log_path: Path, figures_dir: Path) -> None:
-    """Overlay target val Dice/mIoU vs fine-tune epoch for JEPA-transfer vs from-scratch (H2)."""
+def plot_h2_drop(log_path: Path, figures_dir: Path) -> None:
+    """Grouped source vs zero-shot target Dice/mIoU with the source-to-target drop, per model (H2)."""
     import matplotlib.pyplot as plt
+    import numpy as np
 
-    ft_rows = _read_run_epochs(log_path, _latest_h2_run_id(log_path, "finetune") or "")
-    bl_rows = _read_run_epochs(log_path, _latest_h2_run_id(log_path, "supervised_baseline") or "")
-    if not ft_rows and not bl_rows:
-        print(f"No H2 fine-tune curves in {log_path} — skipping H2 convergence plot.")
+    results = _read_h2_results(log_path)
+    if not results:
+        print(f"No H2 results in {log_path} - skipping H2 drop plot.")
         return
+
+    modes = ["finetune", "supervised_baseline"]
+    labels = ["JEPA-pretrained", "Supervised"]
+    x = np.arange(len(modes))
+    w = 0.35
 
     figures_dir.mkdir(parents=True, exist_ok=True)
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     fig.suptitle(
-        "H2 — Cross-organism Transfer\nConvergence on Target Organism (limited fine-tuning)",
+        "H2 - Source to Target Generalization\nsmaller drop = features transfer better across organisms",
         fontsize=12,
     )
-
-    series = [
-        (ft_rows, "JEPA-transfer (source→target)", "#2196F3"),
-        (bl_rows, "From-scratch (target)", "#FF9800"),
-    ]
-    for ax, metric, title in [(axes[0], "val_dice", "Dice"), (axes[1], "val_miou", "mIoU")]:
-        for rows, label, color in series:
-            if not rows:
-                continue
-            ep = [int(r["epoch"]) for r in rows]
-            v = [_safe_float(r.get(metric, "")) or 0.0 for r in rows]
-            ax.plot(ep, v, color=color, linewidth=2, label=label)
-            ax.scatter([ep[-1]], [v[-1]], color=color, s=30, zorder=3)
-            ax.text(ep[-1], v[-1] + 0.02, f"{v[-1]:.2f}", color=color,
-                    ha="right", va="bottom", fontsize=9)
-        ax.set_title(f"Validation {title}")
-        ax.set_xlabel("Fine-tune epoch")
-        ax.set_ylabel(f"{title} (target)")
-        ax.set_ylim(0, 1.0)
-        ax.legend(loc="lower right", fontsize=9)
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-
-    plt.tight_layout()
-    out = figures_dir / "h2_convergence.png"
-    plt.savefig(str(out), dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved: {out}")
-
-
-def plot_h2_transfer_delta(log_path: Path, figures_dir: Path) -> None:
-    """Plot the per-epoch transfer advantage (JEPA Dice − baseline Dice) on the target (H2)."""
-    import matplotlib.pyplot as plt
-
-    ft_rows = _read_run_epochs(log_path, _latest_h2_run_id(log_path, "finetune") or "")
-    bl_rows = _read_run_epochs(log_path, _latest_h2_run_id(log_path, "supervised_baseline") or "")
-    if not ft_rows or not bl_rows:
-        print(f"No paired H2 curves in {log_path} — skipping H2 delta plot.")
-        return
-
-    n = min(len(ft_rows), len(bl_rows))
-    ep = list(range(n))
-    delta = [
-        (_safe_float(ft_rows[i].get("val_dice", "")) or 0.0)
-        - (_safe_float(bl_rows[i].get("val_dice", "")) or 0.0)
-        for i in range(n)
-    ]
-
-    figures_dir.mkdir(parents=True, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.axhline(0, color="gray", linewidth=1, linestyle="--")
-    ax.plot(ep, delta, color="#3F51B5", linewidth=2, label="JEPA − baseline (val Dice)")
-    ax.fill_between(ep, delta, 0, where=[d >= 0 for d in delta],
-                    color="#4CAF50", alpha=0.2, interpolate=True)
-    ax.fill_between(ep, delta, 0, where=[d < 0 for d in delta],
-                    color="#F44336", alpha=0.2, interpolate=True)
-    ax.set_title(
-        "H2 — Transfer Advantage over Fine-tuning\n(positive = JEPA transfer ahead of from-scratch)",
-        fontsize=12,
-    )
-    ax.set_xlabel("Fine-tune epoch")
-    ax.set_ylabel("Δ Dice (JEPA − baseline)")
-    ax.legend(loc="upper right", fontsize=9)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    plt.tight_layout()
-    out = figures_dir / "h2_transfer_delta.png"
-    plt.savefig(str(out), dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved: {out}")
-
-
-def plot_h2_budget_sweep(log_path: Path, figures_dir: Path) -> None:
-    """Plot target test Dice/mIoU vs fine-tune budget for both H2 arms (needs multiple budgets)."""
-    import matplotlib.pyplot as plt
-
-    if not log_path.exists():
-        return
-
-    runs: dict[str, dict] = {}
-    with open(log_path, newline="") as f:
-        for row in csv.DictReader(f):
-            if row.get("hypothesis", "") != "H2":
-                continue
-            mode = row.get("mode", "")
-            if mode not in ("finetune", "supervised_baseline"):
-                continue
-            r = runs.setdefault(row.get("run_id", ""),
-                                {"mode": mode, "epochs": 0, "dice": None, "miou": None})
-            if row.get("epoch", "") != "":
-                r["epochs"] += 1
-            if row.get("checkpoint", "") != "":
-                r["dice"] = _safe_float(row.get("test_dice", ""))
-                r["miou"] = _safe_float(row.get("test_miou", ""))
-
-    data: dict[str, dict[int, dict]] = {"finetune": {}, "supervised_baseline": {}}
-    for r in runs.values():
-        if r["dice"] is not None and r["epochs"] > 0:
-            data[r["mode"]][r["epochs"]] = {"dice": r["dice"], "miou": r["miou"]}
-
-    budgets = sorted(set(list(data["finetune"]) + list(data["supervised_baseline"])))
-    if len(budgets) < 2:
-        return
-
-    figures_dir.mkdir(parents=True, exist_ok=True)
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    fig.suptitle("H2 — Transfer vs Fine-tune Budget", fontsize=12)
     for ax, metric, title in [(axes[0], "dice", "Dice"), (axes[1], "miou", "mIoU")]:
-        for mode, label, color in [
-            ("finetune", "JEPA-transfer", "#2196F3"),
-            ("supervised_baseline", "From-scratch", "#FF9800"),
-        ]:
-            xs = [b for b in budgets if b in data[mode]]
-            ys = [data[mode][b][metric] for b in xs]
-            if xs:
-                ax.plot(xs, ys, marker="o", color=color, linewidth=2, label=label)
-                for xb, yb in zip(xs, ys):
-                    ax.text(xb, yb + 0.02, f"{yb:.2f}", color=color,
-                            ha="center", va="bottom", fontsize=8)
-        ax.set_title(f"Test {title} vs Budget")
-        ax.set_xlabel("Fine-tune budget (epochs)")
-        ax.set_ylabel(f"{title} (target test)")
-        ax.set_ylim(0, 1.0)
+        src = [results.get(m, {}).get(f"source_{metric}", 0.0) for m in modes]
+        tgt = [results.get(m, {}).get(f"target_{metric}", 0.0) for m in modes]
+        b1 = ax.bar(x - w / 2, src, w, label="Source (org 1)", color="#90CAF9")
+        b2 = ax.bar(x + w / 2, tgt, w, label="Target (org 2, zero-shot)", color="#2196F3")
+        for bar in (*b1, *b2):
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
+                    f"{h:.2f}", ha="center", va="bottom", fontsize=8)
+        for i in range(len(modes)):
+            drop_v = src[i] - tgt[i]
+            ax.text(i, max(src[i], tgt[i]) + 0.08, f"drop {drop_v:+.2f}",
+                    ha="center", va="bottom", fontsize=9, color="#444")
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.set_ylabel(title)
+        ax.set_title(f"{title}: Source vs Target")
+        ax.set_ylim(0, 1.2)
         ax.legend(fontsize=9)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
+
     plt.tight_layout()
-    out = figures_dir / "h2_budget_sweep.png"
+    out = figures_dir / "h2_source_target_drop.png"
     plt.savefig(str(out), dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {out}")

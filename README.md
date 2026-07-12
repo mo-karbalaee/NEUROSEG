@@ -362,23 +362,21 @@ labeled_data/
 
 **Protocol:**
 
-1. Pretrain JEPA on the source-organism calcium imaging (unlabeled).
-2. Fine-tune on the target organism with a limited epoch budget.
-3. Train a supervised baseline from scratch on the target organism.
-4. Compare transfer drop (Dice / mIoU on test set) between the two modes.
+1. Train two segmentation models **entirely on the source organism**: a JEPA-pretrained model (self-supervised pretrain + supervised head) and a supervised baseline from scratch.
+2. Evaluate **both models zero-shot on the target organism** — no target training.
+3. Compare target Dice / mIoU and the source→target drop. Higher target score / smaller drop = better cross-organism generalization.
 
 The organism label is inferred automatically from Neurofinder directory names (e.g., `neurofinder.04.00` → zebrafish, `neurofinder.00.00` → mouse.visual_cortex).
 
 ```bash
 uv run main.py \
   --mode train \
-  --data  /path/to/source/tiffs \
+  --data  /path/to/neurofinder.04 \
   --output ./checkpoints \
   --H2 \
   --source-data /path/to/neurofinder.04 \
   --target-data /path/to/neurofinder.00 \
-  --pretrain-epochs 100 \
-  --finetune-epochs 10
+  --config config.yaml
 ```
 
 ---
