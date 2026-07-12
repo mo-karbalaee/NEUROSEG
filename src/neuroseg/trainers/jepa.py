@@ -424,15 +424,19 @@ def build_seg_head(dstc: int, hidden: int = 16) -> nn.Sequential:
 
 
 class JEPAProbe(nn.Module):
-    def __init__(self, jepa, head, hcost):
+    def __init__(self, jepa, head, hcost, train_encoder=False):
         super().__init__()
         self.jepa = jepa
         self.head = head
         self.hcost = hcost
+        self.train_encoder = train_encoder
 
     def forward(self, observations, targets):
-        """Encode observations with a frozen JEPA encoder and compute head loss against targets."""
-        with torch.no_grad():
+        """Encode observations and compute head loss; shapes the encoder when train_encoder is set."""
+        if self.train_encoder:
             state = self.jepa.encoder(observations)
-        output = self.head(state.detach())
+        else:
+            with torch.no_grad():
+                state = self.jepa.encoder(observations).detach()
+        output = self.head(state)
         return self.hcost(output, targets)

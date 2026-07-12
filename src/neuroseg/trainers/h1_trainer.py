@@ -53,6 +53,8 @@ class H1Config:
     f0_percentile: int = 10
     dff_epsilon: float = 1e-6
     lr: float = 1e-3
+    recon_coeff: float = 1.0
+    finetune_encoder_lr_scale: float = 0.1
     pretrain_epochs: int = 100
     finetune_epochs: int = 50
     steps: int = 4
@@ -162,7 +164,7 @@ def pretrain(
 
     jepa = build_jepa(cfg.arch_dict(), device)
     decoder = ImageDecoder(cfg.dstc, cfg.dobs, hidden_dim=cfg.decoder_hidden_dim)
-    pixel_decoder = JEPAProbe(jepa, decoder, nn.MSELoss()).to(device)
+    pixel_decoder = JEPAProbe(jepa, decoder, nn.MSELoss(), train_encoder=True).to(device)
 
     optimizer = Adam([
         {"params": jepa.parameters(), "lr": cfg.lr},
@@ -189,7 +191,7 @@ def pretrain(
                 x, None, nsteps=cfg.steps, unroll_mode="parallel", compute_loss=True
             )
             recon_loss = pixel_decoder(x, x)
-            (jepa_loss + recon_loss).backward()
+            (jepa_loss + cfg.recon_coeff * recon_loss).backward()
             optimizer.step()
             jepa.update_target()
 
@@ -294,7 +296,7 @@ def finetune(
         jepa.load_state_dict(state_dict, strict=False)
 
     seg_head = build_seg_head(cfg.dstc, cfg.seg_head_hidden).to(device)
-    encoder_lr = cfg.lr / 10 if mode == "finetune" else cfg.lr
+    encoder_lr = cfg.lr * cfg.finetune_encoder_lr_scale if mode == "finetune" else cfg.lr
     optimizer = Adam([
         {"params": jepa.encoder.parameters(), "lr": encoder_lr},
         {"params": seg_head.parameters(), "lr": cfg.lr},

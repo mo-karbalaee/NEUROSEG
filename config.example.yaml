@@ -15,6 +15,8 @@ img_size: 128
 batch_size: 8
 num_workers: 2
 lr: 0.001
+recon_coeff: 1.0                  # weight on the pixel-reconstruction loss that shapes the encoder during pretraining
+finetune_encoder_lr_scale: 0.1   # encoder LR during fine-tuning = lr * this. Set to 1.0 for a fair (same-LR) comparison vs the supervised baseline
 pretrain_epochs: 100
 finetune_epochs: 50
 steps: 4          # JEPA unroll steps
