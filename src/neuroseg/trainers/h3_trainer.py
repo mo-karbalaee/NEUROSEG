@@ -209,6 +209,9 @@ def run_h3(state: State):
     if pretrained_ckpt:
         _run_mode("pretrained", pretrained_ckpt, dataset, cfg, device, log_path, max_clips)
 
+    for enc in (extra.get("h3_extra_encoders") or []):
+        _run_mode(enc["mode"], enc["ckpt"], dataset, cfg, device, log_path, max_clips)
+
     if supervised_ckpt:
         _run_mode("supervised_baseline", supervised_ckpt, dataset, cfg, device, log_path, max_clips)
 

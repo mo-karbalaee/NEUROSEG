@@ -233,7 +233,8 @@ def plot_h3_similarity(log_path: Path, figures_dir: Path) -> None:
 
     x = np.arange(len(mode_labels))
     w = 0.25
-    palette = ["#2196F3", "#FF9800", "#9C27B0"]
+    base_palette = ["#2196F3", "#FF9800", "#9C27B0", "#795548", "#009688", "#E91E63"]
+    palette = [base_palette[i % len(base_palette)] for i in range(len(mode_labels))]
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     fig.suptitle("H3 — Temporal Representation Stability", fontsize=12)
