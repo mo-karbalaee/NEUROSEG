@@ -35,9 +35,25 @@ are scarce? Compare across labeled fractions {0.1, 0.5, 0.75, 1.0}.
 - **Changed:** `pretrain_clip_stride` 2→10 (non-overlapping + frame subsample → ~5× less disk I/O per epoch), `pretrain_epochs` 100→20, `finetune_epochs` 100→40; added a **rolling pretrain checkpoint** every 5 epochs for crash recovery.
 - **Takeaway:** the run was I/O-bound (lazy loading re-reads TIFFs every epoch); overlapping clips were the main waste.
 
+### 2026-07-12 · Step 5 — Full H1 run (Kaggle v8): clean pipeline & strong baseline, but SSL still loses.
+- **Ran:** the complete H1 protocol — 20-epoch JEPA pretrain → finetune vs from-scratch supervised baseline at labeled fractions 0.1 / 0.5 / 0.75 / 1.0, on Neurofinder mouse. Output in `output/H1.v8/` (all 8 checkpoints + curves + `h1_dice_comparison.png` / `h1_miou_comparison.png`). Everything ran end-to-end and produced an interpretable performance-vs-labeled-fraction curve.
+- **Final test Dice (pretrained→finetune vs supervised_baseline):**
+
+| frac | pretrained | baseline | Δ (pre−base) |
+|------|-----------|----------|--------------|
+| 0.10 | 0.2225 | **0.3240** | **−0.10** |
+| 0.50 | 0.6717 | **0.7427** | −0.07 |
+| 0.75 | 0.6771 | **0.7615** | −0.08 |
+| 1.00 | 0.7366 | **0.7812** | −0.04 |
+
+  mIoU follows the same order (baseline higher at all four fractions: 0.523/0.753/0.780/0.792 vs 0.485/0.700/0.713/0.756).
+- **What's genuinely good:** absolute quality is now strong — Dice ~0.74–0.78 at full labels on real mouse data (earlier H1 runs were near-collapse). Both arms rise monotonically with labeled fraction; the full protocol (pretrain + 4 fractions × 2 arms + plots) is complete and correct. The **machinery** is done.
+- **But the hypothesis is contradicted, not supported:** H1 predicts SSL should help most at **low** fractions. Instead the pretrained model **loses to from-scratch at every fraction, by the widest margin at 0.1** (−0.10 Dice) — the opposite of the predicted pattern.
+- **Root cause — pretraining diverged on validation (overfit):** JEPA train loss fell 2.59 → 0.30 over 20 epochs, but **val_jepa_loss rose 3.13 → 5.96** (spiking to 16.99 at epoch 14); val_recon stayed flat ~0.004 throughout. The predictive/VICReg objective memorized the small pretraining pool rather than learning a transferable representation, so initializing finetuning from that encoder is *worse* than random init. Same overfitting signature as H2.v3 (H2 Step 11), now confirmed to directly damage H1 transfer.
+- **Fix is on the pretraining side, not finetuning:** more/cleaner unlabeled data (or less aggressive `pretrain_clip_stride` for more distinct clips), **save best-val checkpoint instead of last**, early-stop on val_jepa_loss, and stronger anti-collapse. The finetune/baseline halves are working correctly and need no change.
+
 ### Status
-Re-running on Kaggle with all fixes. Awaiting whether pretraining now helps —
-watch especially the **0.1 fraction**, where SSL should show its largest advantage.
+Pipeline and baseline are solid (Dice ~0.78 @ 100% labels, clean monotonic fraction curve, all 4×2 runs complete). **H1's SSL claim is not yet supported:** the pretrained encoder underperforms the from-scratch baseline at every labeled fraction because JEPA pretraining **overfit** (val_jepa_loss diverged 3.13→5.96). Next lever is the pretraining objective/data + best-val checkpointing — not the downstream finetuning.
 
 ---
 
