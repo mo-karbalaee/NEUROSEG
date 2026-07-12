@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import cv2
@@ -47,11 +48,16 @@ def is_neurofinder_dir(path: str | Path) -> bool:
 
 
 def find_neurofinder_dirs(data_dir: str | Path) -> list[Path]:
-    """Return all Neurofinder dataset directories at or under data_dir."""
+    """Return all Neurofinder dataset directories at or under data_dir, at any nesting depth."""
     root = Path(data_dir)
     if is_neurofinder_dir(root):
         return [root]
-    return sorted(d for d in root.iterdir() if d.is_dir() and is_neurofinder_dir(d))
+    found = []
+    for dirpath, dirnames, _ in os.walk(root):
+        if "images" in dirnames:
+            found.append(Path(dirpath))
+            dirnames[:] = []
+    return sorted(found)
 
 
 # ---------------------------------------------------------------------------

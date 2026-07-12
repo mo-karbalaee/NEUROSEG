@@ -1,0 +1,35 @@
+# neuroseg training config.
+# Data paths come from the CLI (--data, --labeled-data, --output); this file
+# holds only architecture and training hyperparameters, so it is not tied to
+# any environment.
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+dobs: 1
+henc: 32
+hpre: 32
+dstc: 8
+seg_head_hidden: 16
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+img_size: 128
+seq_len: 5
+batch_size: 4
+num_workers: 2
+val_split: 0.1
+test_split: 0.2
+
+# ── Training schedule ─────────────────────────────────────────────────────────
+lr: 0.001
+pretrain_epochs: 100
+finetune_epochs: 100
+steps: 4
+seed: 1
+
+# ── JEPA self-supervision ─────────────────────────────────────────────────────
+ema_momentum: 0.996          # EMA target-encoder momentum (anti-collapse)
+recon_coeff: 1.0             # weight on the pixel-reconstruction loss that shapes the encoder
+pretrain_clip_stride: 2      # overlapping clips multiply the unlabeled pretraining pool
+
+# ── H1: semi-supervised segmentation ──────────────────────────────────────────
+labeled_fractions: [0.1, 0.5, 0.75, 1.0]
+finetune_encoder_lr_scale: 1.0   # encoder LR during fine-tuning = lr * this (1.0 = same LR as the supervised baseline)
