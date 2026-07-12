@@ -99,8 +99,14 @@ mouse barrel cortex.)*
 - **The `.sec` mystery, solved:** the 16 `.sec` files are **Zeiss CZI** microscopy files (magic header `ZISRAWFILE`; the filenames also literally contain "czi" — a bulk-rename turned `X.czi` into `Xczi.sec`). CZI is Zeiss ZEN's native microscope format, readable in Python via `czifile` / `aicspylibczi` / `pylibCZIrw`.
 - **Takeaway:** ~3.2 GB Drosophila (CZI) + ~17 GB zebrafish (ETL tif) of genuine **non-mouse** video — plenty for SSL pretraining. The loader must read both `.tif` and `.czi/.sec`, and split the 6-plane ETL stacks. This is the pretraining pool for the cross-species H2 (→ transfer to mouse).
 
+### 2026-07-12 · Step 10 — Implemented cross-species H2 (pretrain non-mouse → probe mouse).
+- **Built:** `VideoFolderDataset` (`dataset.py`) — reads TIFF **and** Zeiss CZI (`.czi`/`.sec`), resizes on load (bounded memory), and splits the ETL 6-plane 512×3072 stacks into 6× 512×512; memory-safe via `tifffile.memmap` for the 15.8 GB file. Rewrote `run_h2`: pretrain JEPA (unsupervised) on `--source-data` (Drosophila + zebrafish) → `probe_on_target` freezes the encoder and trains only a seg head on `probe_fraction` (0.1) of the **mouse** target, evaluates held-out mouse — **pretrained vs from-scratch** encoder. New plot `plot_h2_probe` (mouse Dice/mIoU bars). Added `czifile` dependency.
+- **Why a probe, not strict zero-shot:** the Drosophila/zebrafish data has **no segmentation labels**, so a pretrained model has an encoder but no head → zero-shot *segmentation* is impossible. The linear probe (encoder frozen, tiny head trained on a mouse slice, tested on held-out mouse) is the honest transfer measure; the encoder never trains on mouse.
+- **Verified:** the loader (multi-page TIFF + single-page + 6-plane split) and the full `run_h2` flow end-to-end on synthetic data; 17 smoke tests pass. **CZI (`.sec`) reading is not testable locally — must be verified on Kaggle** (czifile installs via `pip install -e .`).
+- **Run:** H2 notebook → `--source-data <drosophila dataset> --target-data <neurofinder.00.00>`; both Kaggle datasets must be attached.
+
 ### Status
-Non-mouse pretraining dataset identified and understood (Drosophila CZI + zebrafish ETL 6-plane). Next: build a loader that reads TIFF + CZI and splits the 6-plane stacks, then pretrain JEPA on it and probe on mouse.
+Cross-species H2 implemented and unit-tested (pretrain on Drosophila+zebrafish → linear-probe on mouse, pretrained vs from-scratch). Next: run on Kaggle (confirm CZI loads), then read the mouse probe result.
 
 ---
 
