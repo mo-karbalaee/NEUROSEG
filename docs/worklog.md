@@ -191,9 +191,27 @@ Cross-species pipeline runs end-to-end; Step 11 (device) and Step 12 (`--data` a
 ## H3 — Temporal representation stability
 
 **Question:** are learned embeddings more stable across time for the same neuron than
-for different neurons? Compares within- vs between-neuron cosine similarity across
-pretrained / supervised / random encoders. Post-hoc — needs H1 checkpoints first.
+for different neurons? For each encoder, pool a per-neuron embedding (encoder features
+averaged over that neuron's footprint) per frame, then compare **within-neuron** cosine
+similarity (same neuron across frames — want HIGH, stable identity) vs **between-neuron**
+similarity (different neurons — want LOW, discriminable). **Gap = within − between**; a
+large gap = stable *and* discriminative representation. Compared across pretrained (SSL) /
+supervised / random encoders. Post-hoc analysis over H1's encoders — no training.
+
+### 2026-07-12 · Step 1 — Interim run on the existing H1.v8 checkpoints (no retrain).
+- **Why now:** needed a presentable H3 result for an interim talk without spending GPU. H3 uses only the **encoder**, and it runs locally in seconds — so the existing v8 checkpoints suffice for a first pass. Crucially, the **pretrained encoder is self-supervised (never saw masks)**, so the transpose bug (H1 Step 9) never touched it, and H3 pools over the **now-fixed** footprints — so this analysis is meaningful even though v8's *supervised* head is void.
+- **Made it runnable:** the original `_compute_similarity_gap` did per-pair `cosine_similarity` in Python nested loops (604 clips × 330 neurons → timed out at 2 min). Rewrote it **vectorized** (L2-normalize rows, `V @ V.T`, upper triangle) and added `h3_max_clips` (sample clips evenly across the recording; default 40) → full 3-way run in ~30 s. Added a `--supervised-ckpt` CLI flag (H3's supervised encoder previously had no flag, config-only). Commit 29da2b7; suite 17/17.
+- **Command:** `python main.py --mode train --H3 --data data/neurofinder.00.00 --pretrained-ckpt output/H1.v8/jepa_pretrained_h1_4621ee45.pt --supervised-ckpt output/H1.v8/jepa_h1_supervised_f100_70085721.pt --output output/H3_interim --config config.yaml`
+- **Result (00.00, 40 clips) — HONEST: does NOT support H3 yet:**
+  | encoder | within | between | gap |
+  |---------|--------|---------|-----|
+  | pretrained (SSL) | 0.986 | 0.976 | **0.009** |
+  | supervised | 0.882 | 0.666 | **0.216** |
+  | random (no_pretrain) | 0.984 | 0.981 | **0.003** |
+- **Interpretation:** H3 predicts the **SSL** encoder should have the largest gap. Instead the **supervised** encoder wins by ~20×, and the SSL gap (0.009) is essentially **random** (0.003). The SSL features are **near-collapsed** — within ≈ between ≈ 0.98, i.e. every neuron maps to almost the same vector, so the encoder can't tell neurons apart. This is the **same v8 pretraining failure** seen in H1 (overfit/diverged JEPA), now visible as representation collapse. The supervised encoder legitimately learned discriminative per-neuron features (between drops to 0.67).
+- **Fairness note:** run on 00.00; the v8 pretrained encoder saw 00.00 during SSL (pre-leakage-fix) and the supervised encoder trained on it — so both saw the recording; the comparison isn't confounded by one having seen it and the other not.
+- **For the interim talk:** the honest arc is *method built → preliminary measurement → SSL collapse identified (a known, already-fixed cause) → clean re-run pending*. NOT "SSL wins." Plot: `output/H3_interim/figures/h3_similarity.png` (within-vs-between bars + gap bars).
 
 ### Status
-Not yet run this cycle. Blocked on a good H1 pretrained checkpoint from the re-run.
+**H3 measurement tool built and runs (fast, local); first result is an honest negative.** On v8 checkpoints the supervised encoder is stable+discriminative (gap 0.216) while the SSL encoder is collapsed (gap 0.009 ≈ random 0.003) — consistent with the broken v8 pretraining. The hypothesis gets its real test only after the **clean v9 H1 retrain** (leakage + normalization + transpose fixes); re-run H3 on that encoder then. Optional: run a second recording (e.g. 04.00) to show the pattern holds.
 
