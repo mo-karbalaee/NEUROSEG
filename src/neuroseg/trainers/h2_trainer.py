@@ -104,33 +104,33 @@ def run_h2(state: State):
         hypothesis="H2",
     )
 
-    finetune(
-        pretrained_path,
-        target_dir,
-        fraction=1.0,
-        cfg=cfg,
-        output_dir=output_dir,
-        device=device,
-        mode="finetune",
-        model_name=f"jepa_h2_finetune_{target_organism}",
-        log_path=log_path,
-        hypothesis="H2",
-    )
-
-    finetune(
-        None,
-        target_dir,
-        fraction=1.0,
-        cfg=cfg,
-        output_dir=output_dir,
-        device=device,
-        mode="supervised_baseline",
-        model_name=f"jepa_h2_supervised_{target_organism}",
-        log_path=log_path,
-        hypothesis="H2",
-    )
+    budgets = extra.get("finetune_budgets") or [cfg.finetune_epochs]
+    for budget in budgets:
+        cfg.finetune_epochs = budget
+        suffix = f"_b{budget}" if len(budgets) > 1 else ""
+        finetune(
+            pretrained_path, target_dir, fraction=1.0, cfg=cfg,
+            output_dir=output_dir, device=device, mode="finetune",
+            model_name=f"jepa_h2_finetune_{target_organism}{suffix}",
+            log_path=log_path, hypothesis="H2",
+        )
+        finetune(
+            None, target_dir, fraction=1.0, cfg=cfg,
+            output_dir=output_dir, device=device, mode="supervised_baseline",
+            model_name=f"jepa_h2_supervised_{target_organism}{suffix}",
+            log_path=log_path, hypothesis="H2",
+        )
 
     print("[H2] Done.")
 
-    from neuroseg.plots import plot_h2_dice
-    plot_h2_dice(log_path, output_dir / "figures")
+    from neuroseg.plots import (
+        plot_h2_dice,
+        plot_h2_convergence,
+        plot_h2_transfer_delta,
+        plot_h2_budget_sweep,
+    )
+    figures_dir = output_dir / "figures"
+    plot_h2_dice(log_path, figures_dir)
+    plot_h2_convergence(log_path, figures_dir)
+    plot_h2_transfer_delta(log_path, figures_dir)
+    plot_h2_budget_sweep(log_path, figures_dir)

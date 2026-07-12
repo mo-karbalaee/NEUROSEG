@@ -118,6 +118,18 @@ def list_checkpoints(output_dir: Path) -> list[dict]:
     return results
 
 
+def find_compound_checkpoint(output_dir: Path, hypothesis: str, mode: str) -> Optional[Path]:
+    """Return the most recent compound checkpoint matching the given hypothesis and mode, or None."""
+    candidates = [
+        c for c in list_checkpoints(Path(output_dir))
+        if c.get("hypothesis") == hypothesis and c.get("mode") == mode
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: c.get("date", ""))
+    return candidates[-1]["path"]
+
+
 def _write_sidecar(path: Path, model_name: str, run_id: str, metadata: Optional[dict], arch: Optional[dict] = None):
     """Write a JSON metadata sidecar file next to the checkpoint."""
     meta = {
