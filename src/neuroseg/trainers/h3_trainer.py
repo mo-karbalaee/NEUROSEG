@@ -3,8 +3,7 @@ from typing import Optional
 
 import numpy as np
 import torch
-import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 from neuroseg.checkpoint import load_compound_checkpoint
 from neuroseg.models.state import State
@@ -44,83 +43,77 @@ def _load_encoder(checkpoint_path: Optional[str], cfg: H1Config, device: torch.d
     return jepa
 
 
+def _normalize_rows(a: np.ndarray) -> np.ndarray:
+    """L2-normalize each row of a 2-D array so dot products give cosine similarity."""
+    a = np.asarray(a, dtype=np.float32)
+    return a / (np.linalg.norm(a, axis=-1, keepdims=True) + 1e-8)
+
+
+def _upper_triangle_sims(vecs: np.ndarray) -> np.ndarray:
+    """Return the pairwise cosine similarities (strict upper triangle) of the row vectors."""
+    v = _normalize_rows(vecs)
+    sims = v @ v.T
+    iu = np.triu_indices(len(v), k=1)
+    return sims[iu]
+
+
 @torch.inference_mode()
 def _compute_similarity_gap(
     jepa: JEPA,
     dataset: Dataset,
     device: torch.device,
     img_size: int,
+    max_clips: Optional[int] = None,
 ) -> dict:
     """
-    For each sample compute per-neuron embeddings across frames, then measure:
-      - within_sim  : cosine similarity between the same neuron at different frames
-      - between_sim : cosine similarity between different neurons at the same frame
-    Returns mean values and the gap (within - between).
+    Pool a per-neuron embedding (encoder features averaged over the neuron's footprint)
+    for every neuron in every frame, then measure:
+      - within_sim  : cosine similarity of the same neuron across different frames
+      - between_sim : cosine similarity of different neurons within the same frame
+    Similarities use vectorized matrix products. When max_clips is set, clips are
+    sampled evenly across the recording to bound runtime. Returns the means and the
+    gap (within - between); larger gap = more stable, discriminative features.
     """
     jepa.eval()
-    loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    n = len(dataset)
+    if max_clips and max_clips < n:
+        indices = np.linspace(0, n - 1, max_clips).astype(int)
+    else:
+        indices = np.arange(n)
 
-    all_within, all_between = [], []
+    per_neuron: dict = {}
+    per_frame: list = []
 
-    for batch in loader:
-        x = batch["video"].to(device)
-        mask = batch["mask"].squeeze(0).numpy().astype(np.int64)
+    for ci in indices:
+        sample = dataset[int(ci)]
+        x = sample["video"].unsqueeze(0).to(device)
+        mask = sample["mask"].numpy().astype(np.int64)
+        enc = jepa.encoder(x).squeeze(0).cpu().numpy()
 
-        enc = jepa.encoder(x)
-        enc = enc.squeeze(0).cpu().numpy()
-
-        T = enc.shape[1]
-        neuron_ids = [n for n in np.unique(mask) if n > 0]
-        if len(neuron_ids) < 2:
-            continue
-
-        embeddings = {}
-        for n in neuron_ids:
-            embs = []
-            for t in range(T):
-                region = mask[t] == n
+        for t in range(enc.shape[1]):
+            frame_mask = mask[t]
+            frame_embs = []
+            for neuron_id in np.unique(frame_mask):
+                if neuron_id <= 0:
+                    continue
+                region = frame_mask == neuron_id
                 if region.sum() == 0:
                     continue
-                feat = enc[:, t, region].mean(axis=-1)
-                embs.append(feat)
-            if embs:
-                embeddings[n] = np.stack(embs)
+                vec = enc[:, t, region].mean(axis=-1)
+                per_neuron.setdefault(int(neuron_id), []).append(vec)
+                frame_embs.append(vec)
+            if len(frame_embs) >= 2:
+                per_frame.append(np.stack(frame_embs))
 
-        valid_neurons = [n for n in neuron_ids if n in embeddings]
-        if len(valid_neurons) < 2:
-            continue
+    within = [_upper_triangle_sims(np.stack(v)) for v in per_neuron.values() if len(v) >= 2]
+    between = [_upper_triangle_sims(f) for f in per_frame]
 
-        for n in valid_neurons:
-            embs = embeddings[n]
-            for i in range(len(embs)):
-                for j in range(i + 1, len(embs)):
-                    a = torch.from_numpy(embs[i]).float()
-                    b = torch.from_numpy(embs[j]).float()
-                    all_within.append(F.cosine_similarity(a.unsqueeze(0), b.unsqueeze(0)).item())
-
-        for t in range(T):
-            frame_embs = {}
-            for n in valid_neurons:
-                region = mask[t] == n
-                if region.sum() == 0:
-                    continue
-                frame_embs[n] = enc[:, t, region].mean(axis=-1)
-
-            neurons_in_frame = list(frame_embs.keys())
-            for i in range(len(neurons_in_frame)):
-                for j in range(i + 1, len(neurons_in_frame)):
-                    a = torch.from_numpy(frame_embs[neurons_in_frame[i]]).float()
-                    b = torch.from_numpy(frame_embs[neurons_in_frame[j]]).float()
-                    all_between.append(
-                        F.cosine_similarity(a.unsqueeze(0), b.unsqueeze(0)).item()
-                    )
-
-    if not all_within or not all_between:
+    if not within or not between:
         return {"within_sim": float("nan"), "between_sim": float("nan"), "gap": float("nan")}
 
-    within = float(np.mean(all_within))
-    between = float(np.mean(all_between))
-    return {"within_sim": within, "between_sim": between, "gap": within - between}
+    within_mean = float(np.concatenate(within).mean())
+    between_mean = float(np.concatenate(between).mean())
+    return {"within_sim": within_mean, "between_sim": between_mean, "gap": within_mean - between_mean}
 
 
 def _run_mode(
@@ -130,11 +123,12 @@ def _run_mode(
     cfg: H1Config,
     device: torch.device,
     log_path: Path,
+    max_clips: Optional[int] = None,
 ):
     """Load an encoder, compute the similarity gap for the given mode, and log the results."""
     from neuroseg.logger import RunLogger
     jepa = _load_encoder(checkpoint_path, cfg, device)
-    metrics = _compute_similarity_gap(jepa, dataset, device, cfg.img_size)
+    metrics = _compute_similarity_gap(jepa, dataset, device, cfg.img_size, max_clips=max_clips)
 
     print(
         f"[H3/{mode}] within={metrics['within_sim']:.4f}  "
@@ -206,17 +200,19 @@ def run_h3(state: State):
 
     pretrained_ckpt = extra.get("pretrained_ckpt")
     supervised_ckpt = extra.get("supervised_ckpt")
+    max_clips = extra.get("h3_max_clips")
 
     log_path = Path(state["output_dir"]) / "logs" / "runs.csv"
-    print(f"[H3] device={device} | samples={len(dataset)}")
+    n_used = min(len(dataset), max_clips) if max_clips else len(dataset)
+    print(f"[H3] device={device} | clips={len(dataset)} | using {n_used} (h3_max_clips={max_clips})")
 
     if pretrained_ckpt:
-        _run_mode("pretrained", pretrained_ckpt, dataset, cfg, device, log_path)
+        _run_mode("pretrained", pretrained_ckpt, dataset, cfg, device, log_path, max_clips)
 
     if supervised_ckpt:
-        _run_mode("supervised_baseline", supervised_ckpt, dataset, cfg, device, log_path)
+        _run_mode("supervised_baseline", supervised_ckpt, dataset, cfg, device, log_path, max_clips)
 
-    _run_mode("no_pretrain", None, dataset, cfg, device, log_path)
+    _run_mode("no_pretrain", None, dataset, cfg, device, log_path, max_clips)
 
     print("[H3] Done.")
 

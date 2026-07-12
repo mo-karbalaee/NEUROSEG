@@ -94,7 +94,16 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         metavar="FILE",
-        help="(H2) Path to an already-trained JEPA checkpoint; skips pretraining and probes directly.",
+        help="(H2/H3) Path to an already-trained JEPA checkpoint. H2: skips pretraining and "
+             "probes directly. H3: the pretrained encoder to analyze.",
+    )
+    parser.add_argument(
+        "--supervised-ckpt",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="(H3) Path to a supervised-baseline checkpoint whose encoder is analyzed alongside "
+             "the pretrained and random-init encoders.",
     )
     parser.add_argument(
         "--config",
@@ -158,6 +167,8 @@ def main():
         config["target_data_dir"] = str(args.target_data)
     if args.pretrained_ckpt is not None:
         config["pretrained_ckpt"] = str(args.pretrained_ckpt)
+    if args.supervised_ckpt is not None:
+        config["supervised_ckpt"] = str(args.supervised_ckpt)
 
     run(
         data_dir=args.data or args.output,

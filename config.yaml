@@ -42,3 +42,9 @@ finetune_encoder_lr_scale: 1.0   # encoder LR during fine-tuning = lr * this (1.
 # probe_fraction of mouse labels, evaluate held-out mouse — pretrained vs from-scratch.
 probe_fraction: 0.1              # fraction of mouse labels used to train the probe head
 pretrain_max_file_gb: 5.0        # TEMP: skip source video files larger than this (excludes the 15.8 GB zebrafish ETL for a fast first run; remove to use everything)
+
+# ── H3: temporal representation stability ─────────────────────────────────────
+# H3 pools a per-neuron embedding from the (frozen) encoder over each neuron's
+# footprint per frame, then compares within-neuron vs between-neuron cosine
+# similarity for pretrained / supervised / random encoders. Analysis only — no training.
+h3_max_clips: 40                 # clips sampled evenly across the recording (bounds runtime; null = all)
