@@ -41,3 +41,4 @@ finetune_encoder_lr_scale: 1.0   # encoder LR during fine-tuning = lr * this (1.
 # on the labeled mouse TARGET (--target-data): freeze the encoder, train only a head on
 # probe_fraction of mouse labels, evaluate held-out mouse — pretrained vs from-scratch.
 probe_fraction: 0.1              # fraction of mouse labels used to train the probe head
+pretrain_max_file_gb: 5.0        # TEMP: skip source video files larger than this (excludes the 15.8 GB zebrafish ETL for a fast first run; remove to use everything)

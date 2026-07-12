@@ -64,6 +64,7 @@ class H1Config:
     val_split: float = 0.1
     test_split: float = 0.2
     pretrain_clip_stride: Optional[int] = None
+    pretrain_max_file_gb: Optional[float] = None
 
     def arch_dict(self) -> dict:
         """Return architecture hyperparameters as a dict suitable for saving in checkpoints."""
@@ -111,6 +112,7 @@ def _make_unlabeled_dataset(data_dir: str, cfg: H1Config) -> Dataset:
         )
     return VideoFolderDataset(
         data_dir, cfg.seq_len, cfg.img_size, clip_stride=cfg.pretrain_clip_stride,
+        max_file_gb=cfg.pretrain_max_file_gb,
     )
 
 

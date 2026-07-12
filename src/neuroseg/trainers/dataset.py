@@ -175,12 +175,24 @@ class VideoFolderDataset(Dataset):
     """
 
     def __init__(self, data_dir: str, seq_len: int, img_size: int,
-                 clip_stride: int | None = None, split_planes: bool = True):
+                 clip_stride: int | None = None, split_planes: bool = True,
+                 max_file_gb: float | None = None):
         self.seq_len = seq_len
         self.img_size = img_size
         stride = clip_stride or seq_len
         exts = (".tif", ".tiff", ".czi", ".sec")
         files = sorted(p for p in Path(data_dir).rglob("*") if p.suffix.lower() in exts)
+
+        if max_file_gb is not None:
+            kept = []
+            for p in files:
+                gb = p.stat().st_size / 1e9
+                if gb > max_file_gb:
+                    print(f"[VideoFolderDataset] skipping {p.name} ({gb:.1f} GB > {max_file_gb} GB cap)")
+                else:
+                    kept.append(p)
+            files = kept
+
         if not files:
             raise ValueError(f"No .tif/.czi/.sec video files found under {data_dir}")
 
