@@ -105,8 +105,15 @@ mouse barrel cortex.)*
 - **Verified:** the loader (multi-page TIFF + single-page + 6-plane split) and the full `run_h2` flow end-to-end on synthetic data; 17 smoke tests pass. **CZI (`.sec`) reading is not testable locally — must be verified on Kaggle** (czifile installs via `pip install -e .`).
 - **Run:** H2 notebook → `--source-data <drosophila dataset> --target-data <neurofinder.00.00>`; both Kaggle datasets must be attached.
 
+### 2026-07-12 · Step 11 — First cross-species run (Kaggle v3): pretraining worked, probe crashed.
+- **Ran:** H2 on Kaggle — pretrain JEPA on Drosophila+zebrafish (5 GB cap → the 15.8 GB zebrafish file excluded) → probe on mouse (`neurofinder.00.00`). Output in `output/H2.v3/`.
+- **What worked:** CZI (`.sec`) loaded cleanly (czifile installed, no errors), 20 pretrain epochs completed (~4 min/epoch, ~77 min), checkpoint saved (`jepa_pretrained_h2_56f2880d`).
+- **What broke:** the probe stage crashed — `RuntimeError: Expected all tensors on the same device, cuda:0 and cpu` in `probe_on_target`: encoder features were on GPU but the target masks stayed on CPU. A device bug that only surfaces on GPU — the CPU-only local test missed it. **Fixed** (masks moved to the encoder's device; commit a5500e0).
+- **Also flagged — pretraining overfits:** JEPA train loss fell 4.65 → 0.41, but **val JEPA loss diverged** from ~0.9 (epoch 13) up to 3.37 (epoch 19). The non-mouse pool (after the 5 GB cap + `pretrain_clip_stride=10`) is small, so the encoder overfits. Levers: include the big zebrafish file (raise the cap), lower the clip stride for more clips, or stop earlier / save best-val.
+- **Next:** get the transfer number — probe the saved encoder on mouse (locally on the downloaded checkpoint, or re-run Kaggle with the fix): pretrained vs from-scratch.
+
 ### Status
-Cross-species H2 implemented and unit-tested (pretrain on Drosophila+zebrafish → linear-probe on mouse, pretrained vs from-scratch). Next: run on Kaggle (confirm CZI loads), then read the mouse probe result.
+Cross-species pipeline runs end-to-end except the (now-fixed) probe device bug. Pretraining **overfits** on the small non-mouse pool — a transfer-quality concern. Next: read the pretrained-vs-from-scratch mouse probe result.
 
 ---
 
