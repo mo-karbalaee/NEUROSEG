@@ -441,12 +441,32 @@ def run_h1(state: State):
         f"[H1] finetune/baseline + fixed 80/20 test split operate only on: {labeled_data_dir or '(none)'}"
     )
 
+    if exclude:
+        pool_err = (
+            f"After excluding the test recording ({labeled_data_dir}), no clips remain for "
+            f"self-supervised pretraining under --data={data_dir}. H1 needs at least one "
+            f"recording OTHER than the test recording in --data. Point --data at a folder "
+            f"containing the test recording PLUS other Neurofinder recordings."
+        )
+        try:
+            remaining = _make_unlabeled_dataset(data_dir, cfg, exclude_dirs=exclude)
+        except ValueError:
+            raise ValueError(pool_err)
+        if len(remaining) == 0:
+            raise ValueError(pool_err)
+
     pretrained_path = pretrain(
         data_dir, cfg, output_dir, device,
         model_name="jepa_pretrained_h1",
         log_path=log_path,
         exclude_dirs=exclude,
     )
+    if pretrained_path is None:
+        raise ValueError(
+            "Pretraining produced no checkpoint (empty pretrain pool). The 'finetune' arm "
+            "would silently equal the supervised baseline. Check --data contains recordings "
+            "beyond the excluded test recording."
+        )
 
     for fraction in fractions:
         finetune(
