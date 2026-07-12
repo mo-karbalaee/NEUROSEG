@@ -45,7 +45,9 @@ watch especially the **0.1 fraction**, where SSL should show its largest advanta
 
 **Question (final form):** train two segmentation models on organism 1 (source),
 test both on organism 2 (target); do JEPA-pretrained features transfer better than
-supervised ones? Source = zebrafish (neurofinder.04.00), target = mouse (00.00).
+supervised ones? *(Originally framed as zebrafish (04.00) → mouse (00.00) — this was
+WRONG; Neurofinder is all mouse. See Step 7. It was really mouse parietal cortex →
+mouse barrel cortex.)*
 
 ### 2026-07-12 · Step 1 — Design mismatch found.
 - **Found:** the code trained the segmentation on the *target* and fine-tuned there — it did **not** match the hypothesis (which is: train on source, test on target). It answered a different, weaker question.
@@ -73,8 +75,19 @@ supervised ones? Source = zebrafish (neurofinder.04.00), target = mouse (00.00).
 - **Takeaway:** the deepest form of the negative result. The zebrafish encoder features carry **no usable mouse-neuron information at all**, even given a fresh mouse-trained head — so it is not the head, not calibration, not BatchNorm, not a bug. The representation is fully organism-specific, for both SSL and supervised. **Zebrafish→mouse is too far a domain gap for this model**; there is no signal on this pair to distinguish the two representations. Script: `scripts/h2_linear_probe.py`.
 - **Decision — pivot:** (a) test a **closer pair** (mouse→mouse) to reach a regime with signal and characterize transfer vs domain distance; and/or (b) **multi-organism JEPA pretraining** (pretrain on several organisms, probe a held-out one) — where SSL's cross-organism advantage should appear.
 
+### 2026-07-12 · Step 7 — CRITICAL: Neurofinder is ALL MOUSE. Our organism assumption was wrong.
+- **Finding:** the entire Neurofinder benchmark is **mouse** two-photon calcium imaging — **no zebrafish, no other species at all**. The series number encodes the contributing lab / brain region, NOT the organism:
+  - `00`, `02` — Svoboda / Janelia — mouse **barrel (somatosensory) cortex**
+  - `01` — Häusser / UCL — mouse **barrel cortex**
+  - `03` — Losonczy / Columbia — mouse **hippocampus (CA1)**
+  - `04` — Harvey / Harvard — mouse **posterior parietal cortex**
+- **Impact:** the code's `_NF_ORGANISM_MAP` (`04 = zebrafish`, `10 = mouse.hippocampus`; note series `10` does not even exist) is **fabricated and wrong**. Every H2 figure/log that said "zebrafish" was mislabeled — the run we called "zebrafish → mouse" was actually **mouse parietal cortex (04.00) → mouse barrel cortex (00.00)**: a cross-region / cross-lab transfer *within one species*. And it still floored to Dice 0.
+- **Consequence for H2:** with Neurofinder alone, H2 **cannot be cross-organism** — at best it is **cross-region / cross-lab within mouse**. The largest usable domain gap is **cortex → hippocampus** (train on 00/01/02/04, test on **03**). A genuine cross-species test needs a non-Neurofinder dataset.
+- **Sources:** [Neurofinder README](https://github.com/codeneuro/neurofinder/blob/master/README.md) (series → lab); Peron et al., *Neuron* 2015 (00/02 mouse barrel cortex); Packer et al., *Nat. Methods* 2015 (01 mouse barrel cortex); Kaifosh et al., *Front. Neuroinform.* 2014 / Losonczy lab (03 mouse CA1); Driscoll/Harvey et al., *Cell* 2017 (04 mouse parietal cortex).
+- **Takeaway / TODO:** re-scope H2 as cross-*region* (or bring in a real second species). Fix `_NF_ORGANISM_MAP` so figures stop printing "zebrafish."
+
 ### Status
-Zebrafish→mouse transfer fully characterized as a hard negative (zero-shot AND linear-probe both floor, verified real). Next: rerun H2 on a closer organism pair, and/or set up multi-organism pretraining.
+H2 reframed by Step 7: **Neurofinder is all mouse**, so "cross-organism" is really cross-region. The parietal→barrel (mislabeled "zebrafish→mouse") transfer is a confirmed hard negative (zero-shot AND linear-probe both floor). Next: either a within-Neurofinder cross-region test (cortex → hippocampus `03`), or add a genuinely different species.
 
 ---
 
