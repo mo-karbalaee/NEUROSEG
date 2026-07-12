@@ -91,8 +91,16 @@ mouse barrel cortex.)*
 - **Plan:** pretrain JEPA **unsupervised on the whole non-mouse pool (Drosophila + zebrafish, mixed)** → then test transfer to **mouse** (Neurofinder, labeled) via linear-probe / fine-tune, compared against mouse-from-scratch. This is the real H2 question: do cross-species SSL features transfer to a *held-out species* (mouse) better than supervised features? Pretraining needs only unlabeled video, so labels on the Drosophila side are not required; the mouse labels drive the downstream test.
 - **Status:** inspecting the dataset's file format on Kaggle (folder structure; whether each file is a multi-frame TIFF stack `(T,H,W)`; resolution; grayscale) to decide which loader to use before wiring the pretraining run.
 
+### 2026-07-12 · Step 9 — Dataset identified and characterized.
+- **Dataset:** Kaggle `mokarbalaee/neuroseg-drosophila-larvae` — the supervisor's non-mouse calcium imaging. We inspected it with a script on Kaggle (folder tree + file magic bytes).
+- **Contents (20 files):**
+  - **Drosophila larvae** — 2 TIFF stacks (`Ca imaging good (1-290)` = 290 frames, 512×248; `Ca imaging bad (1-320)` = 320 frames, 241×512) + **16 CZI files** (~200 MB each, ~388 frames of 512×512), split into `Ca imaging low movement/` (8 files) and `Ca imaging strong movement/` (8 files).
+  - **Zebrafish** — 2 ETL 6-plane TIFF stacks (`joe ETL 6plane_00001_stacked` = 500 frames; `joe ETL 6plane 5kframes_00002` = **5000 frames, 15.8 GB**). Each frame is 512×**3072** = **6 z-planes stacked side-by-side** → must be split into 6× 512×512.
+- **The `.sec` mystery, solved:** the 16 `.sec` files are **Zeiss CZI** microscopy files (magic header `ZISRAWFILE`; the filenames also literally contain "czi" — a bulk-rename turned `X.czi` into `Xczi.sec`). CZI is Zeiss ZEN's native microscope format, readable in Python via `czifile` / `aicspylibczi` / `pylibCZIrw`.
+- **Takeaway:** ~3.2 GB Drosophila (CZI) + ~17 GB zebrafish (ETL tif) of genuine **non-mouse** video — plenty for SSL pretraining. The loader must read both `.tif` and `.czi/.sec`, and split the 6-plane ETL stacks. This is the pretraining pool for the cross-species H2 (→ transfer to mouse).
+
 ### Status
-Pivoting H2 to a genuine cross-species test: pretrain JEPA on Drosophila + zebrafish, transfer to mouse. Blocked on confirming the Drosophila dataset's file format (Kaggle inspection in progress), then wire the loader + run.
+Non-mouse pretraining dataset identified and understood (Drosophila CZI + zebrafish ETL 6-plane). Next: build a loader that reads TIFF + CZI and splits the 6-plane stacks, then pretrain JEPA on it and probe on mouse.
 
 ---
 
