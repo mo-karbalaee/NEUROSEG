@@ -86,8 +86,13 @@ mouse barrel cortex.)*
 - **Sources:** [Neurofinder README](https://github.com/codeneuro/neurofinder/blob/master/README.md) (series → lab); Peron et al., *Neuron* 2015 (00/02 mouse barrel cortex); Packer et al., *Nat. Methods* 2015 (01 mouse barrel cortex); Kaifosh et al., *Front. Neuroinform.* 2014 / Losonczy lab (03 mouse CA1); Driscoll/Harvey et al., *Cell* 2017 (04 mouse parietal cortex).
 - **Takeaway / TODO:** re-scope H2 as cross-*region* (or bring in a real second species). Fix `_NF_ORGANISM_MAP` so figures stop printing "zebrafish."
 
+### 2026-07-12 · Step 8 — Bring in a real non-mouse species for pretraining (Drosophila + zebrafish).
+- **New data:** the supervisor provided a dataset (Kaggle: `mokarbalaee/neuroseg-drosophila-larvae`) — mostly **Drosophila larvae** calcium imaging, plus 2 **zebrafish** files (named with "ETL", i.e. Electrically Tunable Lens volumetric imaging). This is genuine **non-mouse** data, which finally makes a *true* cross-species transfer possible (Neurofinder alone can't — it is all mouse, Step 7).
+- **Plan:** pretrain JEPA **unsupervised on the whole non-mouse pool (Drosophila + zebrafish, mixed)** → then test transfer to **mouse** (Neurofinder, labeled) via linear-probe / fine-tune, compared against mouse-from-scratch. This is the real H2 question: do cross-species SSL features transfer to a *held-out species* (mouse) better than supervised features? Pretraining needs only unlabeled video, so labels on the Drosophila side are not required; the mouse labels drive the downstream test.
+- **Status:** inspecting the dataset's file format on Kaggle (folder structure; whether each file is a multi-frame TIFF stack `(T,H,W)`; resolution; grayscale) to decide which loader to use before wiring the pretraining run.
+
 ### Status
-H2 reframed by Step 7: **Neurofinder is all mouse**, so "cross-organism" is really cross-region. The parietal→barrel (mislabeled "zebrafish→mouse") transfer is a confirmed hard negative (zero-shot AND linear-probe both floor). Next: either a within-Neurofinder cross-region test (cortex → hippocampus `03`), or add a genuinely different species.
+Pivoting H2 to a genuine cross-species test: pretrain JEPA on Drosophila + zebrafish, transfer to mouse. Blocked on confirming the Drosophila dataset's file format (Kaggle inspection in progress), then wire the loader + run.
 
 ---
 
