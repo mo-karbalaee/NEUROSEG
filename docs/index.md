@@ -14,7 +14,8 @@ Technical and scientific documentation for the NEUROSEG neural segmentation pipe
 | [Data](data.md) | Neurofinder format, dataset classes (TIFFVideoDataset, LabeledTIFFDataset, NeurofinderDataset), clip segmentation, demo data |
 | [Metrics](metrics.md) | Dice score, mIoU, H3 cosine similarity gap — definitions, edge cases, where each is used |
 | [Configuration](configuration.md) | All CLI flags, all YAML config keys, demo config, HPC and notebook settings |
-| [HPC](hpc.md) | Running training on FAU's HPC (NHR@FAU / Alex): access, Slurm job scripts, environment setup, data staging |
+| [HPC](hpc.md) | Running training on FAU's HPC (NHR@FAU / TinyGPU + Alex): access, Slurm job scripts, environment setup, data staging |
+| [H1 deep-dive](h1/index.md) | Full technical reference for the H1 experiment: architecture, JEPA pretraining, supervised fine-tuning, data/protocol, metrics, and the results-and-fixes history |
 | [Codebase](codebase.md) | Directory layout, module responsibilities, dependency graph, entry points, test coverage |
 
 ## Quick orientation

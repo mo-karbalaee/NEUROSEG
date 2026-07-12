@@ -13,27 +13,84 @@ pages are collected at the bottom.
 
 ## Which cluster
 
-| Cluster | Hardware | Use for NEUROSEG |
-| ------- | -------- | ---------------- |
-| **Alex** | NVIDIA **A40 48 GB** and **A100 40/80 GB** GPUs, AMD Milan CPUs | Yes — all JEPA training (H1/H2/H3) |
-| Fritz | CPU-only parallel cluster | No (no GPU) |
-| Woody / TinyGPU | throughput / entry GPU | Possible for small jobs, but Alex is preferred |
+| Cluster | Hardware | Access | Use for NEUROSEG |
+| ------- | -------- | ------ | ---------------- |
+| **TinyGPU** | RTX 2080 Ti 11 GB, RTX 3080 10 GB, **V100 32 GB**, **A100 40 GB** | **Default** for Tier3 accounts | Yes — all training; available immediately |
+| **Alex** | NVIDIA **A40 48 GB** and **A100 40/80 GB**, 8 GPUs/node | Request required | Yes — best for large sweeps / many parallel jobs |
+| Fritz | CPU-only parallel cluster | — | No (no GPU) |
 
-Alex is a **single-GPU-friendly** fit for this project: NEUROSEG training is not
-distributed, so one A40 or A100 per job is enough — and both are far larger than
-the 15 GB budget the config was originally tuned for.
+Both are a **single-GPU-friendly** fit: NEUROSEG training is not distributed, so
+one GPU per job is enough — and TinyGPU's V100 (32 GB) / A100 (40 GB) are already
+far larger than the 15 GB the config was originally tuned for.
+
+**Which one applies to you?** Check your username. Tier3 accounts (typically
+ending in `h` or `v`) have **TinyGPU by default** but **not Alex** — Alex needs a
+separate access request. NHR project accounts have Alex. Most FAU
+students/staff start on TinyGPU.
 
 ---
 
 ## Access
 
-- A basic FAU HPC account does **not** include Alex. Access is requested
-  separately with a short justification of the compute need
-  (<https://hpc.fau.de/tier3-access-to-alex/>).
+- **TinyGPU** is available by default to Tier3 "Grundversorgung" accounts — no
+  request needed. If `ssh` to Alex prints *"you are not permitted to use the Alex
+  cluster"*, your account is Tier3 and you should use TinyGPU (or request Alex).
+- **Alex** is **not** included by default. Request it separately with a short
+  justification of the compute need (<https://hpc.fau.de/tier3-access-to-alex/>).
 - HPC-portal accounts have **no password** — authentication is **SSH key only**.
   Upload your public SSH key in the HPC portal before the first login.
 - Compute is billed against a project quota (NPL). Do not leave interactive GPU
   sessions idle.
+
+---
+
+## TinyGPU (default Tier3 access — start here)
+
+TinyGPU uses the same NHR@FAU software stack as Alex; the one-time environment
+setup below is identical. Two things differ:
+
+1. **Login host** is `tinyx.nhr.fau.de` (a shared frontend for TinyGPU/TinyFat).
+2. **Submit with suffixed Slurm commands**: `sbatch.tinygpu`, `salloc.tinygpu`,
+   `srun.tinygpu` (not plain `sbatch`).
+
+Partitions (all cap at **24 h** walltime):
+
+| Partition | GPU | Request syntax |
+| --------- | --- | -------------- |
+| `work` (default) | RTX 2080 Ti / RTX 3080 | `--gres=gpu:1` |
+| `rtx3080` | RTX 3080 10 GB | `--gres=gpu:1 -p rtx3080` |
+| `v100` | Tesla V100 32 GB | `--gres=gpu:v100:1 -p v100` |
+| `a100` | A100 40 GB | `--gres=gpu:a100:1 -p a100` |
+
+A V100 (32 GB) is the recommended default for this project. TinyGPU job script
+(`h1.slurm`), submitted with `sbatch.tinygpu h1.slurm`:
+
+```bash
+#!/bin/bash -l
+#SBATCH --job-name=neuroseg-h1
+#SBATCH --gres=gpu:v100:1
+#SBATCH -p v100
+#SBATCH --time=24:00:00
+#SBATCH --export=NONE
+
+unset SLURM_EXPORT_ENV
+module load python
+conda activate neuroseg
+
+cd $WORK/NEUROSEG
+python main.py \
+    --mode train --H1 \
+    --data        $WORK/data/neuroseg-labeled \
+    --labeled-data $WORK/data/neuroseg-labeled/neurofinder.00.00/neurofinder.00.00 \
+    --output      $WORK/neuroseg-output \
+    --config      config.yaml
+```
+
+Interactive test: `salloc.tinygpu --gres=gpu:v100:1 -p v100 --time=1:00:00`.
+
+The **Alex** instructions below are for when you have Alex access and need more
+GPUs per node or many parallel jobs; the environment setup and job body are the
+same, only the login host (`alex.nhr.fau.de`) and plain `sbatch` differ.
 
 ---
 
