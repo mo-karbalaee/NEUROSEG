@@ -88,7 +88,8 @@ def run(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     file_paths = [str(p) for p in sorted(data_dir.iterdir()) if p.is_file()]
-    print(f"Found {len(file_paths)} file(s) in {data_dir}")
+    if mode == Mode.INFERENCE:
+        print(f"Found {len(file_paths)} file(s) in {data_dir}")
 
     app = build_app()
     return app.invoke({
