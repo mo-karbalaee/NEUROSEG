@@ -7,7 +7,7 @@
 dobs: 1
 henc: 32
 hpre: 32
-dstc: 8
+dstc: 32                       # latent/embedding dim per location; 8 was too small to keep neurons distinct (H3 collapse)
 seg_head_hidden: 16
 
 # ── Data ──────────────────────────────────────────────────────────────────────
@@ -30,6 +30,8 @@ checkpoint_every: 5          # save a rolling 'latest' pretrain checkpoint every
 ema_momentum: 0.996          # EMA target-encoder momentum (anti-collapse)
 recon_coeff: 1.0             # weight on the pixel-reconstruction loss that shapes the encoder
 pretrain_clip_stride: 10     # > seq_len: non-overlapping + frame subsample — large I/O cut per epoch
+pretrain_augment: true       # random crop/flip/rotate/jitter/noise on train clips only (prevents memorization + collapse)
+pretrain_patience: 8         # early-stop pretraining after N epochs without val_jepa_loss improvement (0 = disabled); best-val checkpoint is always kept
 
 # ── H1: semi-supervised segmentation ──────────────────────────────────────────
 labeled_fractions: [0.1, 0.5, 0.75, 1.0]

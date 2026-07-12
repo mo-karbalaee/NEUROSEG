@@ -30,6 +30,60 @@ def _normalize(data: np.ndarray) -> np.ndarray:
     return (data - mn) / (mx - mn + 1e-8)
 
 
+def _augment_clip(clip: np.ndarray) -> np.ndarray:
+    """
+    Apply a random, temporally-consistent augmentation to a (T, H, W) clip in [0, 1].
+
+    Spatial ops (random resized crop, horizontal/vertical flip, 90-degree rotation)
+    use the SAME parameters for every frame so temporal correspondence is preserved;
+    photometric jitter and additive Gaussian noise decorrelate the view from the raw
+    clip. Used only for self-supervised pretraining, to prevent the encoder from
+    memorizing clips (overfitting) and to force invariant, non-collapsed features.
+    """
+    rng = np.random.default_rng()
+    out = clip.astype(np.float32)
+    _, h, w = out.shape
+
+    if rng.random() < 0.8:
+        scale = rng.uniform(0.6, 1.0)
+        ch, cw = max(1, int(round(h * scale))), max(1, int(round(w * scale)))
+        top = int(rng.integers(0, h - ch + 1))
+        left = int(rng.integers(0, w - cw + 1))
+        cropped = out[:, top:top + ch, left:left + cw]
+        out = np.stack([cv2.resize(f, (w, h), interpolation=cv2.INTER_LINEAR) for f in cropped])
+
+    if rng.random() < 0.5:
+        out = out[:, ::-1, :]
+    if rng.random() < 0.5:
+        out = out[:, :, ::-1]
+    if h == w:
+        k = int(rng.integers(0, 4))
+        if k:
+            out = np.rot90(out, k, axes=(1, 2))
+
+    out = out * rng.uniform(0.8, 1.2) + rng.uniform(-0.1, 0.1)
+    out = out + rng.normal(0.0, 0.02, size=out.shape)
+    return np.ascontiguousarray(np.clip(out, 0.0, 1.0).astype(np.float32))
+
+
+class AugmentedClips(Dataset):
+    """Training-only wrapper that applies _augment_clip to a base dataset's 'video' clips."""
+
+    def __init__(self, base: Dataset):
+        self.base = base
+
+    def __len__(self) -> int:
+        """Return the number of clips in the wrapped dataset."""
+        return len(self.base)
+
+    def __getitem__(self, idx: int) -> dict:
+        """Return the base sample with its video clip randomly augmented."""
+        sample = self.base[idx]
+        clip = sample["video"].squeeze(0).numpy()
+        aug = _augment_clip(clip)
+        return {"video": torch.from_numpy(aug).unsqueeze(0).float()}
+
+
 def _iter_frames(path: str):
     """Yield frames as 2-D float32 arrays from a multi-frame TIFF or Zeiss CZI (.czi/.sec) video."""
     ext = Path(path).suffix.lower()

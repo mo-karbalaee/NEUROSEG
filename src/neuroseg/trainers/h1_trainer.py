@@ -15,6 +15,7 @@ from neuroseg.logger import RunLogger
 from neuroseg.metrics import dice, miou
 from neuroseg.models.state import State
 from neuroseg.trainers.dataset import (
+    AugmentedClips,
     LabeledTIFFDataset,
     NeurofinderDataset,
     VideoFolderDataset,
@@ -58,6 +59,8 @@ class H1Config:
     pretrain_epochs: int = 100
     finetune_epochs: int = 50
     checkpoint_every: int = 0
+    pretrain_augment: bool = True
+    pretrain_patience: int = 0
     steps: int = 4
     seed: int = 1
     labeled_fractions: list[float] = field(default_factory=lambda: list(LABELED_FRACTIONS))
@@ -165,11 +168,16 @@ def pretrain(
         [n_train, n_val],
         generator=torch.Generator().manual_seed(cfg.seed),
     )
+    train_source = AugmentedClips(train_set) if cfg.pretrain_augment else train_set
     train_loader = DataLoader(
-        train_set, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers
+        train_source, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers
     )
     val_loader = DataLoader(
         val_set, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers
+    )
+    print(
+        f"[pretrain] clips={len(dataset)} train={len(train_set)} val={len(val_set)} "
+        f"| augment={cfg.pretrain_augment} | dstc={cfg.dstc} | patience={cfg.pretrain_patience}"
     )
 
     jepa = build_jepa(cfg.arch_dict(), device)
@@ -188,6 +196,11 @@ def pretrain(
 
     jepa.train()
     pixel_decoder.train()
+
+    best_val = float("inf")
+    best_state = None
+    best_epoch = -1
+    epochs_no_improve = 0
 
     for epoch in range(cfg.pretrain_epochs):
         epoch_jepa, epoch_recon, n_batches = 0.0, 0.0, 0
@@ -218,6 +231,15 @@ def pretrain(
             **val_metrics,
         )
 
+        val_jepa_loss = val_metrics["val_jepa_loss"]
+        if val_jepa_loss < best_val:
+            best_val = val_jepa_loss
+            best_epoch = epoch
+            best_state = {k: v.detach().cpu().clone() for k, v in jepa.state_dict().items()}
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+
         if cfg.checkpoint_every and (epoch + 1) % cfg.checkpoint_every == 0:
             save_latest_checkpoint(
                 jepa, model_name, logger.run_id, output_dir,
@@ -225,12 +247,25 @@ def pretrain(
                 metadata={"hypothesis": hypothesis, "mode": "pretrain", "epoch": epoch},
             )
 
+        if cfg.pretrain_patience and epochs_no_improve >= cfg.pretrain_patience:
+            print(
+                f"[pretrain] early stop at epoch {epoch} "
+                f"(no val improvement for {cfg.pretrain_patience} epochs)"
+            )
+            break
+
+    if best_state is not None:
+        jepa.load_state_dict(best_state)
+        print(f"[pretrain] restored best-val encoder from epoch {best_epoch} (val_jepa_loss={best_val:.4f})")
+
     checkpoint_path = save_checkpoint(
         jepa, model_name=model_name, run_id=logger.run_id,
-        output_dir=output_dir, metadata={"hypothesis": hypothesis, "mode": "pretrain"},
+        output_dir=output_dir,
+        metadata={"hypothesis": hypothesis, "mode": "pretrain",
+                  "best_epoch": best_epoch, "best_val_jepa_loss": best_val},
         arch=cfg.arch_dict(),
     )
-    print(f"Pretrained checkpoint: {checkpoint_path}")
+    print(f"Pretrained checkpoint (best-val): {checkpoint_path}")
 
     from neuroseg.plots import plot_pretrain_curves
     plot_pretrain_curves(
