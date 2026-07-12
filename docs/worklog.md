@@ -212,6 +212,18 @@ supervised / random encoders. Post-hoc analysis over H1's encoders — no traini
 - **Fairness note:** run on 00.00; the v8 pretrained encoder saw 00.00 during SSL (pre-leakage-fix) and the supervised encoder trained on it — so both saw the recording; the comparison isn't confounded by one having seen it and the other not.
 - **For the interim talk:** the honest arc is *method built → preliminary measurement → SSL collapse identified (a known, already-fixed cause) → clean re-run pending*. NOT "SSL wins." Plot: `output/H3_interim/figures/h3_similarity.png` (within-vs-between bars + gap bars).
 
+### 2026-07-12 · Step 2 — Added the H2 cross-species encoder to the comparison (4-way).
+- **Idea:** also run H3 on the **H2 pretrained encoder** (JEPA self-supervised on **Drosophila + zebrafish**, `output/H2.v3/jepa_pretrained_h2_56f2880d.pt`, same arch henc32/dstc8/img128) — i.e. does a *cross-species* SSL encoder represent **mouse** neurons any better than the mouse-SSL one?
+- **Made it possible:** added `h3_extra_encoders` config (list of `{mode, ckpt}`) so H3 evaluates arbitrary named encoders beyond the default pretrained/supervised/random; extended the plot palette past 3 modes. Commit f065d20; suite 17/17. `_load_encoder` reads each checkpoint's own `.json` sidecar for arch, so mixed checkpoints load correctly.
+- **Result (00.00, 40 clips):**
+  | encoder | within | between | gap |
+  |---------|--------|---------|-----|
+  | supervised | 0.882 | 0.666 | **0.216** |
+  | **H2 cross-species SSL** (Drosophila+zebrafish) | 0.968 | 0.940 | **0.028** |
+  | H1 mouse SSL | 0.986 | 0.976 | **0.009** |
+  | random | 0.978 | 0.973 | **0.005** |
+- **Interpretation:** supervised still wins by ~8× — H3's core claim (SSL > supervised) remains **unsupported**. **But** the cross-species encoder is the **least-collapsed SSL**: its gap (0.028) is **3× the mouse-SSL encoder** (0.009) and **5× random** (0.005). So the Drosophila+zebrafish pretraining retained *more* mouse-neuron discriminability than the mouse pretraining did (which diverged worst in v8). A modest but real signal that broader/more-diverse pretraining resists collapse better — a secondary observation for the interim talk, not a headline.
+
 ### Status
-**H3 measurement tool built and runs (fast, local); first result is an honest negative.** On v8 checkpoints the supervised encoder is stable+discriminative (gap 0.216) while the SSL encoder is collapsed (gap 0.009 ≈ random 0.003) — consistent with the broken v8 pretraining. The hypothesis gets its real test only after the **clean v9 H1 retrain** (leakage + normalization + transpose fixes); re-run H3 on that encoder then. Optional: run a second recording (e.g. 04.00) to show the pattern holds.
+**H3 measurement tool built and runs (fast, local); 4-way comparison in hand; first result is an honest negative with one interesting nuance.** On v8 checkpoints the supervised encoder is stable+discriminative (gap 0.216) while all SSL encoders are near-collapsed — but the **cross-species** SSL (0.028) is 3× less collapsed than **mouse** SSL (0.009), both above random (0.005). Consistent with the broken v8 pretraining; the hypothesis gets its real test only after the **clean v9 H1 retrain** (leakage + normalization + transpose fixes). Then re-run this 4-way H3 on the v9 encoder. Optional: a second recording (e.g. 04.00) to show the pattern holds.
 
