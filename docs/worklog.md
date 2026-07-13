@@ -250,6 +250,21 @@ supervised / random encoders. Post-hoc analysis over H1's encoders — no traini
   | random | 0.978 | 0.973 | **0.005** |
 - **Interpretation:** supervised still wins by ~8× — H3's core claim (SSL > supervised) remains **unsupported**. **But** the cross-species encoder is the **least-collapsed SSL**: its gap (0.028) is **3× the mouse-SSL encoder** (0.009) and **5× random** (0.005). So the Drosophila+zebrafish pretraining retained *more* mouse-neuron discriminability than the mouse pretraining did (which diverged worst in v8). A modest but real signal that broader/more-diverse pretraining resists collapse better — a secondary observation for the interim talk, not a headline.
 
+### 2026-07-13 · Step 3 — Re-run on the clean v9 encoder: SSL is no longer collapsed (6× the v8 gap).
+- **Setup:** same 4-way H3 (00.00, 40 clips) but with the **v9** encoders — `pretrained` = `output/H1.v9/jepa_pretrained_h1_b90e1c5b.pt` (dstc=32, augmentation, best-val), `supervised` = `output/H1.v9/jepa_h1_supervised_f100_bca8cf10.pt`, random baseline built at **dstc=32** to match. Cross-species (H2.v3) unchanged. Output `output/H3_v9/`.
+- **Result (00.00, 40 clips):**
+
+| encoder | within | between | gap |
+|---------|--------|---------|-----|
+| supervised (v9) | 0.793 | 0.585 | **0.208** |
+| **mouse SSL (v9 pretrained)** | 0.875 | 0.818 | **0.057** |
+| H2 cross-species SSL | 0.968 | 0.940 | **0.028** |
+| random (dstc=32) | 0.978 | 0.972 | **0.007** |
+
+- **v8 → v9 (the headline):** the mouse-SSL gap went **0.009 → 0.057 (6×)**, and between-neuron similarity dropped **0.98 → 0.82** — in v8 every neuron mapped to nearly the same vector (collapse); in v9 the encoder actually **separates neurons**. Ordering is now supervised (0.208) > **mouse-SSL-v9 (0.057)** > cross-species (0.028) > random (0.007).
+- **Not just the wider latent:** the **random** encoder at dstc=32 still sits at between=0.972 / gap 0.007, so the de-collapse came from the **SSL training** (augmentation + best-val), not merely from more dimensions.
+- **Honest read:** the SSL upgrades **measurably worked** — the encoder went from "as collapsed as random" (v8) to **8× the random gap** and the best of the SSL encoders, consistent with H1's modest +0.017 win at 100%. **But supervised still wins ~4×**, so H3's core claim (SSL > supervised) is still **not** proven — and this came from an encoder whose val_jepa still diverged (best_epoch 0). The remaining upside is in **fixing pretraining convergence**; a well-converged SSL encoder should close more of the gap to supervised.
+
 ### Status
-**H3 measurement tool built and runs (fast, local); 4-way comparison in hand; first result is an honest negative with one interesting nuance.** On v8 checkpoints the supervised encoder is stable+discriminative (gap 0.216) while all SSL encoders are near-collapsed — but the **cross-species** SSL (0.028) is 3× less collapsed than **mouse** SSL (0.009), both above random (0.005). Consistent with the broken v8 pretraining; the hypothesis gets its real test only after the **clean v9 H1 retrain** (leakage + normalization + transpose fixes). Then re-run this 4-way H3 on the v9 encoder. Optional: a second recording (e.g. 04.00) to show the pattern holds.
+**H3 on the clean v9 encoder shows real progress: SSL de-collapsed.** Gap ordering supervised (0.208) > mouse-SSL-v9 (0.057, **6× the v8 0.009**) > cross-species (0.028) > random (0.007); between-neuron similarity fell 0.98→0.82, and the effect is from SSL training (random@dstc32 stays collapsed), not the wider latent. Supervised still wins ~4× so the hypothesis isn't proven, but the fixes measurably improved the representation. **Next: fix pretraining convergence (val_jepa diverges from epoch 0 — VICReg/EMA/data), then re-check H3; the win should grow.**
 
