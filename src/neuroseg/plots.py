@@ -279,19 +279,32 @@ def plot_h3_similarity(log_path: Path, figures_dir: Path) -> None:
     print(f"Saved: {out}")
 
 
-def plot_h1_dice(log_path: Path, figures_dir: Path) -> None:
-    """Plot H1 Dice and mIoU bar charts comparing JEPA pretrained vs supervised baseline."""
+def plot_h1_dice(
+    log_path: Path,
+    figures_dir: Path,
+    prefix: str = "h1",
+    title: str = "H1 — Semi-supervised Segmentation",
+    pretrained_label: str = "JEPA Pretrained",
+) -> None:
+    """
+    Plot Dice and mIoU bar charts comparing a pretrained-then-finetuned arm vs the
+    from-scratch supervised baseline, per labeled fraction.
+
+    Shared by H1 (within-mouse pretraining) and H2 (cross-species pretraining) — the
+    two modes (finetune / supervised_baseline) and the fraction axis are identical;
+    only the figure title, legend label, and filename prefix differ.
+    """
     import matplotlib.pyplot as plt
     import numpy as np
 
     results = _read_h1_results(log_path)
     if not results:
-        print(f"No H1 results in {log_path} — skipping H1 plot.")
+        print(f"No results in {log_path} — skipping {prefix} plot.")
         return
 
     fractions = sorted(set(list(results["finetune"]) + list(results["supervised_baseline"])))
     if not fractions:
-        print("No H1 results to plot.")
+        print("No results to plot.")
         return
 
     x = np.arange(len(fractions))
@@ -303,18 +316,18 @@ def plot_h1_dice(log_path: Path, figures_dir: Path) -> None:
 
     figures_dir.mkdir(parents=True, exist_ok=True)
     for metric, ylabel, filename in [
-        ("dice", "Dice Score", "h1_dice_comparison.png"),
-        ("miou", "mIoU",       "h1_miou_comparison.png"),
+        ("dice", "Dice Score", f"{prefix}_dice_comparison.png"),
+        ("miou", "mIoU",       f"{prefix}_miou_comparison.png"),
     ]:
         jepa_vals = _vals(metric, "finetune")
         base_vals = _vals(metric, "supervised_baseline")
 
         fig, ax = plt.subplots(figsize=(8, 5))
         ax.set_title(
-            f"H1 — Semi-supervised Segmentation\n{ylabel} vs Labeled Data Fraction",
+            f"{title}\n{ylabel} vs Labeled Data Fraction",
             fontsize=12,
         )
-        b1 = ax.bar(x - w / 2, jepa_vals, w, label="JEPA Pretrained",     color="#2196F3", alpha=0.9)
+        b1 = ax.bar(x - w / 2, jepa_vals, w, label=pretrained_label,       color="#2196F3", alpha=0.9)
         b2 = ax.bar(x + w / 2, base_vals,  w, label="Supervised Baseline", color="#FF9800", alpha=0.9)
         for bar in (*b1, *b2):
             h = bar.get_height()
