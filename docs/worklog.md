@@ -101,8 +101,25 @@ are scarce? Compare across labeled fractions {0.1, 0.5, 0.75, 1.0}.
 - **Verified:** `_augment_clip` preserves shape/range and changes content; end-to-end synthetic pretrain shows `augment=True | dstc=32`, early-stop firing, and `restored best-val encoder from epoch N` before save; full `run_h1` (pretrain→finetune, dstc=32) produces all 4 summary rows; suite 17/17.
 - **Not yet tuned (future):** the VICReg std/cov weights (`std_coeff=10, cov_coeff=100`) and EMA momentum (0.996) — collapse persisted despite them; worth rebalancing once the above land. Multi-source pretraining (Neurofinder + Drosophila + zebrafish) is the other big data lever.
 
+### 2026-07-13 · Step 11 — v9 run (first clean, trustworthy H1): strong absolute quality; SSL edges out only at 100%; pretraining still diverges.
+- **Setup:** first run with all five fixes (leakage exclusion + transpose + inference-norm + augmentation + dstc=32 + best-val). Output in `output/H1.v9/`. 00.00 held out of SSL; finetune/baseline on 00.00's fixed 80/20 test.
+- **Final test Dice (pretrained→finetune vs supervised_baseline):**
+
+| frac | pretrained | baseline | Δ (pre−base) |
+|------|-----------|----------|--------------|
+| 0.10 | 0.626 | **0.703** | −0.077 |
+| 0.50 | 0.840 | **0.861** | −0.021 |
+| 0.75 | 0.868 | **0.887** | −0.020 |
+| 1.00 | **0.895** | 0.878 | **+0.017** |
+
+  mIoU tracks it (SSL wins only at 1.00: 0.903 vs 0.886).
+- **What's genuinely good:** absolute Dice jumped to **~0.88–0.90** (from the void v8) — the transpose + normalization fixes mean the model learned *real* segmentation on *correct* masks, and these numbers are **trustworthy** (leakage-free, fixed test, correct labels). First time the **pretrained** arm beats supervised at 100% labels (+0.017 Dice/mIoU).
+- **The caveat — SSL pretraining STILL diverged:** the pretrain checkpoint metadata is `best_epoch: 0` (best_val_jepa_loss 4.92); val trajectory `4.92→6.31→6.80→6.37→8.24→7.14→5.96→6.28→7.35` then early-stopped (patience 8). Augmentation + dstc=32 did **not** fix the divergence — val is worst-from-epoch-0. Best-val checkpointing did its job (saved us from the diverged epoch-8 encoder), but it means the "pretrained" encoder is **barely pretrained** (~1 epoch / near-init).
+- **Honest interpretation:** the **pipeline + fixes are a clear success** (real, strong, citable ~0.9 Dice), but the **+0.017 win at 100% comes from a barely-trained SSL encoder** — modest, possibly noise-level, not proof of learned representations. The hypothesis's expected shape (SSL helps *most* at low labels) is **reversed**: SSL trails at 0.1/0.5/0.75 and only edges ahead at 100%. The finetuning is doing the real work; the SSL objective itself is still the blocker.
+- **Next lever (the real one):** why does val_jepa diverge from epoch 0? Rebalance VICReg (`std_coeff`/`cov_coeff`), lower EMA momentum, revisit the prediction task, and/or multi-source data (Neurofinder + Drosophila + zebrafish). Immediate step: **re-run H3 on the v9 encoder** to see whether representations are any less collapsed than the v8 encoder.
+
 ### Status
-**v8 fully RETRACTED** (leakage `992de33`, inference-normalization `f91b0df`, GT-mask transpose `a1335f9`) — all prior Neurofinder masks/metrics void, retrain required. **Plus SSL-quality upgrades for v9** (`2993ad7`): training-only augmentation, `dstc` 8→32, best-val checkpoint + early-stop — aimed squarely at the pretraining overfit/collapse seen in H1 and H3. Suite 17/17; GT-viz + inference-viz verified on real cells. **Next: Kaggle/HPC v9 with all five fixes → first H1 result whose masks correspond to real neurons AND whose SSL encoder has a fighting chance of not collapsing (re-check via H3).**
+**v8 RETRACTED; v9 is the first clean, trustworthy H1 run** (`output/H1.v9/`). Absolute segmentation is strong and citable (Dice ~0.88–0.90; leakage-free, correct masks, fixed split), and the pretrained arm **beats supervised at 100%** (+0.017) — but SSL trails at every lower fraction and the **pretraining still diverges from epoch 0** (best-val = epoch 0), so the SSL encoder is barely trained and H1's core claim remains unproven. **Next: (1) re-run H3 on the v9 encoder; (2) fix pretraining convergence (VICReg/EMA/data).**
 
 ---
 
