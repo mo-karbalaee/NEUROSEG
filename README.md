@@ -53,7 +53,7 @@ Both are available from the [Neurofinder benchmark](https://github.com/codeneuro
 The exact data used in the experiments is published on Kaggle:
 
 - **Labeled** (Neurofinder, mouse — H1/H2 target, H3): [neuroseg-labeled](https://www.kaggle.com/datasets/mokarbalaee/neuroseg-labeled)
-- **Unlabeled cross-species** (Drosophila + zebrafish — H2 source, self-supervised pretraining): [neuroseg-drosophila-larvae](https://www.kaggle.com/datasets/mokarbalaee/neuroseg-drosophila-larvae)
+- **Unlabeled cross-species** (Drosophila + zebrafish — H2 source, self-supervised pretraining): provided by the AnKi Lab (not public)
 
 A smaller Neurofinder subset for quick demos is also available: [neurofinder-mini](https://www.kaggle.com/datasets/mokarbalaee/neurofinder-mini).
 
