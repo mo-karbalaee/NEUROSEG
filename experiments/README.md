@@ -11,5 +11,3 @@ uv run python scripts/build_experiment_configs.py
 ```
 
 `init` distinguishes the arms compared in the report: `ssl_pretrained` (same-species SSL), `crossspecies_ssl` (H2 source), `from_scratch`, `supervised`, `untrained`, and `zero_shot` (Cellpose). Per-clip `dice`/`miou` are the held-out training-protocol scores; `detection_f1` and the field-level `dice` are the native-resolution instance evaluation; `gap` is the H3 within-minus-between similarity.
-
-Note: all runs use a single seed. The report's Limitations section flags multi-seed evaluation as outstanding work.
