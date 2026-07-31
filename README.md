@@ -41,7 +41,14 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 
 Both are available from the [Neurofinder benchmark](https://github.com/codeneuro/neurofinder).
 
-You can also find a subset of the neurofinder dataset on this [Kaggle dataset](https://www.kaggle.com/datasets/mokarbalaee/neurofinder-mini)
+### Datasets (Kaggle)
+
+The exact data used in the experiments is published on Kaggle:
+
+- **Labeled** (Neurofinder, mouse — H1/H2 target, H3): [neuroseg-labeled](https://www.kaggle.com/datasets/mokarbalaee/neuroseg-labeled)
+- **Unlabeled cross-species** (Drosophila + zebrafish — H2 source, self-supervised pretraining): [neuroseg-drosophila-larvae](https://www.kaggle.com/datasets/mokarbalaee/neuroseg-drosophila-larvae)
+
+A smaller Neurofinder subset for quick demos is also available: [neurofinder-mini](https://www.kaggle.com/datasets/mokarbalaee/neurofinder-mini).
 
 ### One-command demo
 
