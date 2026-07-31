@@ -372,15 +372,15 @@ labeled_data/
 
 ### H2 — Cross-organism transfer
 
-**Hypothesis:** JEPA representations generalise better across organisms than supervised features.
+**Hypothesis:** A JEPA representation learned on one species transfers to another with little penalty.
 
 **Protocol:**
 
-1. Train two segmentation models **entirely on the source organism**: a JEPA-pretrained model (self-supervised pretrain + supervised head) and a supervised baseline from scratch.
-2. Evaluate **both models zero-shot on the target organism** — no target training.
-3. Compare target Dice / mIoU and the source→target drop. Higher target score / smaller drop = better cross-organism generalization.
+1. Self-supervised pretrain a JEPA encoder on the non-mouse **source** (Drosophila + zebrafish), or reuse an existing pretrained checkpoint via `--pretrained-ckpt`.
+2. Fine-tune on the labeled mouse **target** at each labeled fraction, comparing the cross-species-pretrained init (mode `finetune`) against a from-scratch baseline (mode `supervised_baseline`) under identical fine-tuning.
+3. Compare target Dice across fractions. A higher pretrained score, especially at small fractions, means the cross-species representation transfers to mouse.
 
-The organism label is inferred automatically from Neurofinder directory names (e.g., `neurofinder.04.00` → zebrafish, `neurofinder.00.00` → mouse.visual_cortex).
+Leakage-free by construction: the encoder is pretrained on a different species than the mouse target, so it never sees the mouse test set. The organism label is inferred automatically from Neurofinder directory names (e.g., `neurofinder.04.00` → zebrafish, `neurofinder.00.00` → mouse.visual_cortex).
 
 ```bash
 uv run main.py \
