@@ -86,6 +86,20 @@ Grouped bar chart of within-neuron vs between-neuron cosine similarity across th
 **`output/demo_checkpoints/figures/`**  
 Per-run training curves generated automatically during training. Each fine-tune run produces a 2×2 figure (train loss, val Dice, val mIoU, final test-set bar); each pretrain run produces a 1×2 figure (JEPA loss and reconstruction loss).
 
+### Report figures
+
+`scripts/report_figures.py` regenerates the exact figures used in the project report directly from the experiment logs and Neurofinder data — the combined training curves (pretraining train-vs-held-out loss and fine-tuning validation Dice), the H3 within/between similarity and separation-gap bars, the H3 within-vs-between illustration on real calcium frames, and the per-neuron embedding schematic.
+
+```bash
+uv run python scripts/report_figures.py \
+  --h1-log output/H1.v9/logs/runs.csv \
+  --h3-log output/H3_v9/logs/runs.csv \
+  --data   data/neurofinder.00.00 \
+  --output output/report_figures
+```
+
+All inputs come from CLI flags, so the same command reproduces the plots from any run's logs.
+
 ### Inspect training logs
 
 ```bash
