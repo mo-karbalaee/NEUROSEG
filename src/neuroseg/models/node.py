@@ -1,14 +1,12 @@
 from enum import StrEnum
 
 class Node(StrEnum):
-    # inference nodes
+    """Named pipeline stages: the inference nodes plus the training node."""
     LOADER = "loader"
     PRE_PROCESSOR = "pre-processor"
     SEGMENTER = "segmenter"
     ACTIVITY_TRACE_CALCULATOR = "activity-trace-calculator"
     VISUALIZER = "visualizer"
-    
-    # training nodes
     TRAINING = "training"
     
     

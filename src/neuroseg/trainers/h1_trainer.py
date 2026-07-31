@@ -35,6 +35,7 @@ LABELED_FRACTIONS = [0.1, 0.5, 0.75, 1.0]
 
 @dataclass
 class H1Config:
+    """Architecture, schedule, and data hyperparameters for the H1/H2/H3 trainers."""
     seq_len: int = 10
     img_size: int = 128
     batch_size: int = 8

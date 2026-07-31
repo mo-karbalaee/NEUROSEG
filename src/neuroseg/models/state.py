@@ -5,6 +5,7 @@ from neuroseg.models.hypothesis import Hypothesis
 
 
 class State(TypedDict):
+    """Shared LangGraph state schema carried through every pipeline node."""
     mode: Mode
     hypothesis: Optional[Hypothesis]
     data_dir: str

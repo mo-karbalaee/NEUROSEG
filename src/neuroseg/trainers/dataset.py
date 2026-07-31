@@ -70,6 +70,7 @@ class AugmentedClips(Dataset):
     """Training-only wrapper that applies _augment_clip to a base dataset's 'video' clips."""
 
     def __init__(self, base: Dataset):
+        """Wrap a base clip dataset whose 'video' clips are augmented on access."""
         self.base = base
 
     def __len__(self) -> int:
@@ -187,6 +188,7 @@ class TIFFVideoDataset(Dataset):
     """
 
     def __init__(self, file_paths: list[str], seq_len: int, img_size: int, clip_stride: int | None = None):
+        """Index fixed-length clips from a list of unlabeled TIFF stacks for pretraining."""
         self.seq_len = seq_len
         self.img_size = img_size
         self.clips: list[np.ndarray] = []
@@ -231,6 +233,7 @@ class VideoFolderDataset(Dataset):
     def __init__(self, data_dir: str, seq_len: int, img_size: int,
                  clip_stride: int | None = None, split_planes: bool = True,
                  max_file_gb: float | None = None):
+        """Discover TIFF/CZI/SEC videos under a directory and index clips, splitting ETL z-planes."""
         self.seq_len = seq_len
         self.img_size = img_size
         stride = clip_stride or seq_len
@@ -317,6 +320,7 @@ class LabeledTIFFDataset(Dataset):
         seed: int = 0,
         binarize: bool = True,
     ):
+        """Index clips from labeled video/mask sample folders at the given labeled fraction."""
         self.seq_len = seq_len
         self.img_size = img_size
         self.binarize = binarize
@@ -403,6 +407,7 @@ class NeurofinderDataset(Dataset):
         clip_stride: int | None = None,
         exclude_dirs: list[str | Path] | None = None,
     ):
+        """Index Neurofinder recordings into clips with binarized or integer-labeled masks."""
         self.seq_len = seq_len
         self.img_size = img_size
         self.labeled = labeled

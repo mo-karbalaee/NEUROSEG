@@ -312,6 +312,7 @@ def plot_h1_dice(
     xtick_labels = [f"{int(f * 100)}%" for f in fractions]
 
     def _vals(metric: str, mode: str) -> list[float]:
+        """Return the metric values for one mode across the labeled fractions."""
         return [results[mode].get(f, {}).get(metric, 0.0) for f in fractions]
 
     figures_dir.mkdir(parents=True, exist_ok=True)

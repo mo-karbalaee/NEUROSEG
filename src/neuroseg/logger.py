@@ -14,6 +14,8 @@ COLUMNS = [
 
 
 class RunLogger:
+    """Append-only CSV logger that records one row per training epoch and checkpoint."""
+
     def __init__(
         self,
         log_path: Path,

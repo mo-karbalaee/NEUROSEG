@@ -14,6 +14,8 @@ def init_module_weights(m, std: float = 0.02):
 
 
 class TemporalBatchMixin:
+    """Mixin that lets a 2-D conv module also process 5-D (B,C,T,H,W) temporal tensors."""
+
     def _forward(self, x):
         """Process a single 4-D (B×C×H×W) tensor; must be overridden by subclasses."""
         raise NotImplementedError
@@ -31,7 +33,10 @@ class TemporalBatchMixin:
 
 
 class ResidualBlock(nn.Module):
+    """A pre-activation residual block with a 1x1 shortcut when shapes change."""
+
     def __init__(self, in_channels, out_channels, stride=1):
+        """Build two 3x3 conv-BN layers and a shape-matching shortcut."""
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, stride, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
@@ -54,7 +59,10 @@ class ResidualBlock(nn.Module):
 
 
 class ResNet5(TemporalBatchMixin, nn.Module):
+    """Five-layer residual encoder with unit strides, preserving spatial resolution."""
+
     def __init__(self, in_d, h_d, out_d, s1=1, s2=1, s3=1, avg_pool=False):
+        """Build the stem and three residual blocks; keep resolution unless avg_pool is set."""
         super().__init__()
         self.avg_pool = avg_pool
         self.conv1 = nn.Conv2d(in_d, h_d, 3, 1, 1, bias=False)
@@ -78,7 +86,10 @@ class ResNet5(TemporalBatchMixin, nn.Module):
 
 
 class ResUNet(TemporalBatchMixin, nn.Module):
+    """Residual U-Net used as the latent-space predictor."""
+
     def __init__(self, in_d, h_d, out_d, is_rnn=False):
+        """Build the residual encoder-decoder path with skip connections."""
         super().__init__()
         self.is_rnn = is_rnn
         self.conv1 = nn.Conv2d(in_d, h_d, 3, 1, 1, bias=False)
@@ -123,7 +134,10 @@ class ResUNet(TemporalBatchMixin, nn.Module):
 
 
 class StateOnlyPredictor(nn.Module):
+    """Predict the next latent state from consecutive states, ignoring actions."""
+
     def __init__(self, predictor, context_length=2):
+        """Wrap a predictor network with the given context window length."""
         super().__init__()
         self.predictor = predictor
         self.is_rnn = predictor.is_rnn
@@ -138,7 +152,10 @@ class StateOnlyPredictor(nn.Module):
 
 
 class Projector(nn.Module):
+    """MLP projector shared by the variance-covariance and prediction losses."""
+
     def __init__(self, mlp_spec: str):
+        """Build the MLP from a dash-separated layer-width specification."""
         super().__init__()
         layers = []
         f = list(map(int, mlp_spec.split("-")))
@@ -154,7 +171,10 @@ class Projector(nn.Module):
 
 
 class ImageDecoder(TemporalBatchMixin, nn.Module):
+    """Small convolutional decoder that maps encoder features back to pixel space."""
+
     def __init__(self, in_dim, out_dim=1, hidden_dim=16):
+        """Build the two-layer pixel-reconstruction decoder."""
         super().__init__()
         self.net = nn.Sequential(
             nn.Conv2d(in_dim, hidden_dim, 3, 1, 1),
@@ -169,7 +189,10 @@ class ImageDecoder(TemporalBatchMixin, nn.Module):
 
 
 class conv3d2(nn.Sequential):
+    """A two-layer 3-D convolution block that records its induced temporal shift."""
+
     def __init__(self, in_d, h_d, out_d, tk, ts, sk, ss, pad):
+        """Build two 3-D convolutions and set the temporal-shift bookkeeping attribute."""
         super().__init__(
             nn.Conv3d(in_d, h_d, (tk, sk, sk), (1, 1, 1), pad),
             nn.ReLU(),
@@ -183,7 +206,10 @@ class conv3d2(nn.Sequential):
 
 
 class SomaDetHead(nn.Module):
+    """Head that pools encoder features and predicts a per-frame soma detection map."""
+
     def __init__(self, in_d, h_d, map_size=8):
+        """Build the pooling detection head at the given output map size."""
         super().__init__()
         self.map_size = map_size
         self.head = nn.Sequential(conv3d2(in_d, h_d, 1, 1, 1, 3, 1, "same"))
@@ -226,7 +252,10 @@ class SomaDetHead(nn.Module):
 
 
 class HingeStdLoss(nn.Module):
+    """VICReg variance term: penalizes embedding dimensions whose std falls below the margin."""
+
     def __init__(self, std_margin: float = 1.0):
+        """Store the hinge margin for the standard-deviation penalty."""
         super().__init__()
         self.std_margin = std_margin
 
@@ -238,6 +267,8 @@ class HingeStdLoss(nn.Module):
 
 
 class CovarianceLoss(nn.Module):
+    """VICReg covariance term: penalizes off-diagonal covariance between feature dimensions."""
+
     def off_diagonal(self, x):
         """Return all off-diagonal elements of a square matrix as a flat vector."""
         n, m = x.shape
@@ -253,7 +284,10 @@ class CovarianceLoss(nn.Module):
 
 
 class VCLoss(nn.Module):
+    """Combined variance-covariance regularizer that prevents representation collapse."""
+
     def __init__(self, std_coeff, cov_coeff, proj=None, std_margin=1.0):
+        """Build the variance and covariance terms with their coefficients and projector."""
         super().__init__()
         self.std_coeff = std_coeff
         self.cov_coeff = cov_coeff
@@ -274,7 +308,10 @@ class VCLoss(nn.Module):
 
 
 class SquareLossSeq(nn.Module):
+    """Mean-squared prediction loss computed in the projected latent space."""
+
     def __init__(self, proj=None):
+        """Store the projector used to compare target states and predictions."""
         super().__init__()
         self.proj = nn.Identity() if proj is None else proj
 
@@ -286,8 +323,11 @@ class SquareLossSeq(nn.Module):
 
 
 class JEPA(nn.Module):
+    """Joint-embedding predictive model: encoder, EMA target encoder, predictor, and regularizer."""
+
     def __init__(self, encoder, aencoder, predictor, regularizer, predcost,
                  target_encoder=None, ema_momentum=0.996):
+        """Assemble the JEPA components and freeze the EMA target encoder when present."""
         super().__init__()
         self.encoder = encoder
         self.action_encoder = aencoder
@@ -424,7 +464,10 @@ def build_seg_head(dstc: int, hidden: int = 16) -> nn.Sequential:
 
 
 class JEPAProbe(nn.Module):
+    """Attach a task head to a JEPA encoder for probing or fine-tuning."""
+
     def __init__(self, jepa, head, hcost, train_encoder=False):
+        """Wrap a JEPA and head, optionally allowing gradients to flow into the encoder."""
         super().__init__()
         self.jepa = jepa
         self.head = head
