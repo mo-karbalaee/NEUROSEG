@@ -1,15 +1,17 @@
-uid: '013'
+uid: 20acd987
 date: '2026-07-13'
-hypothesis: H2
+hypothesis: H1
 model: jepa_resnet5
 dataset: neurofinder.00.00
-init: from_scratch
+init: ssl_pretrained
 seed: 1
-labeled_fraction: 0.1
+labeled_fraction: 0.5
 hyperparameters:
   lr: 1e-3
   dstc: '32'
   seq: '5'
   bs: '4'
+  ema: '0.996'
+  pre_ep: '9'
   ft_ep: '40'
-tag: H2 from-scratch 10%
+tag: H1 SSL fine-tune 50%

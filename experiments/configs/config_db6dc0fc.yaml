@@ -1,12 +1,12 @@
-uid: '017'
+uid: db6dc0fc
 date: '2026-07-13'
 hypothesis: H3
 model: jepa_resnet5
 dataset: neurofinder.00.00
-init: ssl_pretrained
+init: untrained
 seed: 1
 labeled_fraction: 1.0
 hyperparameters:
   metric: within/between-cosine
-  cohens_d: '0.66'
-tag: H3 same-species SSL
+  cohens_d: '0.16'
+tag: H3 untrained floor

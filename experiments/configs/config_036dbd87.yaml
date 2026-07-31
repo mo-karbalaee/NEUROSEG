@@ -1,0 +1,12 @@
+uid: 036dbd87
+date: '2026-07-13'
+hypothesis: H3
+model: jepa_resnet5
+dataset: neurofinder.00.00
+init: supervised
+seed: 1
+labeled_fraction: 1.0
+hyperparameters:
+  metric: within/between-cosine
+  cohens_d: '1.45'
+tag: H3 supervised (upper reference)

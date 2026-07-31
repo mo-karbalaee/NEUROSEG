@@ -1,13 +1,13 @@
-uid: '022'
+uid: 9e5a91fa
 date: '2026-07-13'
 hypothesis: H1
 model: jepa_resnet5
 dataset: neurofinder.00.00
-init: from_scratch
+init: ssl_pretrained
 seed: 1
 labeled_fraction: 1.0
 hyperparameters:
   eval: field-level
   res: '512'
   iou: '0.5'
-tag: Field-level from-scratch f100 (157/330 instances)
+tag: Field-level SSL f100 (155/330 instances)

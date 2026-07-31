@@ -1,0 +1,11 @@
+uid: 7f41d276
+date: '2026-05-29'
+hypothesis: prototype
+model: jepa_somadet
+dataset: neurofinder.00.00
+init: ssl_pretrained
+seed: 1
+labeled_fraction: 1.0
+hyperparameters:
+  pre_ep: '30'
+tag: Early JEPA + detection prototype (per-frame eval, det-AP=0.07)
