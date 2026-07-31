@@ -490,6 +490,12 @@ The JSON sidecar files store enough information to reconstruct any checkpoint wi
 
 ## Experiment Logs
 
+[**`EXPERIMENTS.md`**](EXPERIMENTS.md) is the aggregated experimental log: settings, per-run results, and statistical tests for H1, H2, and H3 in one place. Regenerate the numeric summary from any set of runs with `scripts/aggregate_log.py`:
+
+```bash
+uv run python scripts/aggregate_log.py --output output
+```
+
 Every training epoch is appended to `<output_dir>/logs/runs.csv`. No external tracking server required.
 
 Each run produces two kinds of rows:
