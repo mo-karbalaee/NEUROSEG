@@ -1,0 +1,16 @@
+uid: 80eea59f
+timestamp: '2026-07-11T23:53:00'
+hypothesis: H1
+model: jepa_resnet5
+dataset: neurofinder.00.00
+init: from_scratch
+seed: 1
+labeled_fraction: 0.1
+hyperparameters:
+  lr: 1e-3
+  dstc: '8'
+  seq: '5'
+  bs: '4'
+  ft_ep: '40'
+  pre_ep: '20'
+tag: H1 (Jul 11) scratch 10%

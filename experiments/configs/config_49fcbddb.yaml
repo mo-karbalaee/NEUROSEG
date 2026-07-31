@@ -1,0 +1,16 @@
+uid: 49fcbddb
+timestamp: '2026-07-12T14:23:55'
+hypothesis: H2
+model: jepa_resnet5
+dataset: zebrafish (pretrain) -> mouse.visual_cortex
+init: crossspecies_ssl
+seed: 1
+labeled_fraction: 1.0
+hyperparameters:
+  lr: 1e-3
+  dstc: '8'
+  seq: '5'
+  bs: '4'
+  ft_ep: '40'
+  pre_ep: '20'
+tag: H2 (Jul 12, zero-shot) SSL 100%; target_dice=0.039 (transfer failed)

@@ -1,0 +1,16 @@
+uid: 94f29638
+timestamp: '2026-06-29T06:57:00'
+hypothesis: H2
+model: jepa_resnet5
+dataset: zebrafish (pretrain) -> mouse.visual_cortex
+init: from_scratch
+seed: 1
+labeled_fraction: 1.0
+hyperparameters:
+  lr: 1e-3
+  dstc: None
+  seq: '5'
+  bs: '4'
+  ft_ep: '40'
+  pre_ep: '20'
+tag: H2 (Jun 29, original) scratch 100%

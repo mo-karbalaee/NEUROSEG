@@ -1,0 +1,16 @@
+uid: c989bd1c
+timestamp: '2026-07-12T01:00:41'
+hypothesis: H1
+model: jepa_resnet5
+dataset: neurofinder.00.00
+init: ssl_pretrained
+seed: 1
+labeled_fraction: 1.0
+hyperparameters:
+  lr: 1e-3
+  dstc: '8'
+  seq: '5'
+  bs: '4'
+  ft_ep: '40'
+  pre_ep: '20'
+tag: H1 (Jul 11) SSL 100%

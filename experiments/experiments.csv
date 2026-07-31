@@ -1,37 +1,57 @@
 uid,timestamp,hypothesis,model,dataset,init,labeled_fraction,seed,hyperparameters,dice,miou,detection_f1,gap,tag
 7f41d276,2026-05-29T06:34:53,prototype,jepa_somadet,neurofinder.00.00,ssl_pretrained,1.00,1,jepa+somadet;pre_ep=30;per-frame-eval,0.987,0.974,,,"Early JEPA + detection prototype (per-frame eval, det-AP=0.07)"
+30aa791e,2026-06-29T06:36:54,H2,jepa_resnet5,zebrafish (pretrain) -> mouse.visual_cortex,crossspecies_ssl,1.00,1,lr=1e-3;dstc=None;seq=5;bs=4;ft_ep=40;pre_ep=20,0.770,0.778,,,"H2 (Jun 29, original) SSL 100%"
+94f29638,2026-06-29T06:57:00,H2,jepa_resnet5,zebrafish (pretrain) -> mouse.visual_cortex,from_scratch,1.00,1,lr=1e-3;dstc=None;seq=5;bs=4;ft_ep=40;pre_ep=20,0.874,0.872,,,"H2 (Jun 29, original) scratch 100%"
+cc8e6fe3,2026-06-29T08:20:43,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.10,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.000,0.418,,,H1 (Jun 29) SSL 10%
+cf600f46,2026-06-29T08:21:57,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.489,0.593,,,H1 (Jun 29) scratch 10%
+24fbd020,2026-06-29T08:26:54,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.50,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.554,0.626,,,H1 (Jun 29) SSL 50%
+25b5ad9e,2026-06-29T08:31:56,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.788,0.788,,,H1 (Jun 29) scratch 50%
+6222ae46,2026-06-29T08:39:15,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.75,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.584,0.648,,,H1 (Jun 29) SSL 75%
+1ba666cd,2026-06-29T08:46:37,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.767,0.780,,,H1 (Jun 29) scratch 75%
+9c7c9042,2026-06-29T08:56:17,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.597,0.658,,,H1 (Jun 29) SSL 100%
+72a6935f,2026-06-29T09:06:00,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.780,0.795,,,H1 (Jun 29) scratch 100%
+58f38190,2026-07-11T23:50:49,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.10,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.245,0.492,,,H1 (Jul 11) SSL 10%
+80eea59f,2026-07-11T23:53:00,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.291,0.510,,,H1 (Jul 11) scratch 10%
+1e10549e,2026-07-12T00:02:41,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.50,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.586,0.646,,,H1 (Jul 11) SSL 50%
+29f33b61,2026-07-12T00:12:27,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.821,0.816,,,H1 (Jul 11) scratch 50%
+30718f4d,2026-07-12T00:26:53,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.75,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.587,0.654,,,H1 (Jul 11) SSL 75%
+b7e69c15,2026-07-12T00:41:28,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.814,0.825,,,H1 (Jul 11) scratch 75%
+c989bd1c,2026-07-12T01:00:41,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.636,0.682,,,H1 (Jul 11) SSL 100%
+383c15a0,2026-07-12T01:19:57,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.820,0.830,,,H1 (Jul 11) scratch 100%
+49fcbddb,2026-07-12T14:23:55,H2,jepa_resnet5,zebrafish (pretrain) -> mouse.visual_cortex,crossspecies_ssl,1.00,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.956,0.952,,,"H2 (Jul 12, zero-shot) SSL 100%; target_dice=0.039 (transfer failed)"
+e7c9730a,2026-07-12T14:36:24,H2,jepa_resnet5,zebrafish (pretrain) -> mouse.visual_cortex,from_scratch,1.00,1,lr=1e-3;dstc=8;seq=5;bs=4;ft_ep=40;pre_ep=20,0.967,0.964,,,"H2 (Jul 12, zero-shot) scratch 100%; target_dice=0.029 (transfer failed)"
 1cf46e23,2026-07-12T18:04:20,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=20;ft_ep=40,0.223,0.485,,,H1 v8 (pre-fix) SSL 10%
-722bb3e3,2026-07-12T18:11:34,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=20;ft_ep=40,0.672,0.700,,,H1 v8 (pre-fix) SSL 50%
-7ff81c62,2026-07-12T18:26:20,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=20;ft_ep=40,0.677,0.713,,,H1 v8 (pre-fix) SSL 75%
-f1691c1d,2026-07-12T18:47:43,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=20;ft_ep=40,0.737,0.756,,,H1 v8 (pre-fix) SSL 100%
 91bbae59,2026-07-12T18:05:35,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.324,0.523,,,H1 v8 (pre-fix) scratch 10%
+722bb3e3,2026-07-12T18:11:34,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=20;ft_ep=40,0.672,0.700,,,H1 v8 (pre-fix) SSL 50%
 cf423dec,2026-07-12T18:17:21,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.743,0.753,,,H1 v8 (pre-fix) scratch 50%
+7ff81c62,2026-07-12T18:26:20,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=20;ft_ep=40,0.677,0.713,,,H1 v8 (pre-fix) SSL 75%
 06b295c9,2026-07-12T18:35:23,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.762,0.780,,,H1 v8 (pre-fix) scratch 75%
+f1691c1d,2026-07-12T18:47:43,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=20;ft_ep=40,0.737,0.756,,,H1 v8 (pre-fix) SSL 100%
 0dafef04,2026-07-12T18:59:45,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.781,0.792,,,H1 v8 (pre-fix) scratch 100%
 203c379f,2026-07-12T23:08:51,H3,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,metric=within/between-cosine,,,,0.009,H3 interim same-species SSL
 ff2534ac,2026-07-12T23:09:00,H3,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,metric=within/between-cosine,,,,0.028,H3 interim cross-species SSL
-693a6c09,2026-07-12T23:36:52,H3,jepa_resnet5,neurofinder.00.00,supervised,1.00,1,metric=within/between-cosine,,,,0.243,H3 interim supervised
 4c013f13,2026-07-12T23:09:17,H3,jepa_resnet5,neurofinder.00.00,untrained,1.00,1,metric=within/between-cosine,,,,0.005,H3 interim untrained floor
+693a6c09,2026-07-12T23:36:52,H3,jepa_resnet5,neurofinder.00.00,supervised,1.00,1,metric=within/between-cosine,,,,0.243,H3 interim supervised
 762b187f,2026-07-13T01:23:49,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.626,0.675,,,H1 SSL fine-tune 10%
-20acd987,2026-07-13T01:33:50,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.839,0.846,,,H1 SSL fine-tune 50%
-a75f4ea6,2026-07-13T01:51:46,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.868,0.874,,,H1 SSL fine-tune 75%
-66e0e337,2026-07-13T02:15:47,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.895,0.903,,,H1 SSL fine-tune 100%
 e67ce2dd,2026-07-13T01:26:05,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.703,0.730,,,H1 from-scratch 10%
+20acd987,2026-07-13T01:33:50,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.839,0.846,,,H1 SSL fine-tune 50%
 2dc65f41,2026-07-13T01:41:18,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.860,0.868,,,H1 from-scratch 50%
+a75f4ea6,2026-07-13T01:51:46,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.868,0.874,,,H1 SSL fine-tune 75%
 fb299e35,2026-07-13T02:02:16,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.887,0.895,,,H1 from-scratch 75%
+66e0e337,2026-07-13T02:15:47,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.895,0.903,,,H1 SSL fine-tune 100%
 ee744e16,2026-07-13T02:28:10,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.878,0.885,,,H1 from-scratch 100%
-f03e1ea4,2026-07-13T10:57:20,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.10,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.639,0.678,,,H2 cross-species SSL 10%
-3df5db80,2026-07-13T11:05:54,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.50,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.818,0.826,,,H2 cross-species SSL 50%
-9aa33fb2,2026-07-13T11:21:47,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.75,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.858,0.863,,,H2 cross-species SSL 75%
-693f8252,2026-07-13T11:43:10,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.884,0.892,,,H2 cross-species SSL 100%
-251f4703,2026-07-13T10:59:07,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.698,0.727,,,H2 from-scratch 10%
-476f14e1,2026-07-13T11:12:28,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.849,0.858,,,H2 from-scratch 50%
-bbfda74a,2026-07-13T11:31:01,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.886,0.894,,,H2 from-scratch 75%
-d43ceafe,2026-07-13T11:55:13,H2,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.873,0.881,,,H2 from-scratch 100%
 9499705c,2026-07-13T09:43:44,H3,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,metric=within/between-cosine;cohens_d=0.66,,,,0.057,H3 same-species SSL
 4b2b155f,2026-07-13T09:43:53,H3,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,metric=within/between-cosine,,,,0.028,H3 cross-species SSL
 036dbd87,2026-07-13T09:44:02,H3,jepa_resnet5,neurofinder.00.00,supervised,1.00,1,metric=within/between-cosine;cohens_d=1.45,,,,0.208,H3 supervised (upper reference)
 db6dc0fc,2026-07-13T09:44:11,H3,jepa_resnet5,neurofinder.00.00,untrained,1.00,1,metric=within/between-cosine;cohens_d=0.16,,,,0.007,H3 untrained floor
+f03e1ea4,2026-07-13T10:57:20,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.10,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.639,0.678,,,H2 cross-species SSL 10%
+251f4703,2026-07-13T10:59:07,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.698,0.727,,,H2 from-scratch 10%
+3df5db80,2026-07-13T11:05:54,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.50,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.818,0.826,,,H2 cross-species SSL 50%
+476f14e1,2026-07-13T11:12:28,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.849,0.858,,,H2 from-scratch 50%
+9aa33fb2,2026-07-13T11:21:47,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.75,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.858,0.863,,,H2 cross-species SSL 75%
+bbfda74a,2026-07-13T11:31:01,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.886,0.894,,,H2 from-scratch 75%
+693f8252,2026-07-13T11:43:10,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.884,0.892,,,H2 cross-species SSL 100%
+d43ceafe,2026-07-13T11:55:13,H2,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.873,0.881,,,H2 from-scratch 100%
 9e5a91fa,2026-07-22T23:09:32,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,eval=field-level;res=512;iou=0.5,0.700,,0.264,,Field-level SSL f100 (155/330 instances)
 d3ba53d6,2026-07-22T23:09:32,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,eval=field-level;res=512;iou=0.5,0.711,,0.279,,Field-level from-scratch f100 (157/330 instances)
 68479d71,2026-07-22T23:09:32,baseline,cellpose,neurofinder.00.00,zero_shot,,,eval=field-level;res=512;iou=0.5;diameter=auto,0.279,,0.170,,Cellpose zero-shot baseline (105/330 instances)
