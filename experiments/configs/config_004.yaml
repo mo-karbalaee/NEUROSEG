@@ -1,0 +1,17 @@
+uid: '004'
+date: '2026-07-13'
+hypothesis: H1
+model: jepa_resnet5
+dataset: neurofinder.00.00
+init: ssl_pretrained
+seed: 1
+labeled_fraction: 1.0
+hyperparameters:
+  lr: 1e-3
+  dstc: '32'
+  seq: '5'
+  bs: '4'
+  ema: '0.996'
+  pre_ep: '9'
+  ft_ep: '40'
+tag: H1 SSL fine-tune 100%

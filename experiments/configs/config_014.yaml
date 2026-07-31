@@ -1,0 +1,15 @@
+uid: '014'
+date: '2026-07-13'
+hypothesis: H2
+model: jepa_resnet5
+dataset: neurofinder.00.00
+init: from_scratch
+seed: 1
+labeled_fraction: 0.5
+hyperparameters:
+  lr: 1e-3
+  dstc: '32'
+  seq: '5'
+  bs: '4'
+  ft_ep: '40'
+tag: H2 from-scratch 50%

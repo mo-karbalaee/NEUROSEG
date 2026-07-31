@@ -1,0 +1,18 @@
+uid: '010'
+date: '2026-07-13'
+hypothesis: H2
+model: jepa_resnet5
+dataset: neurofinder.00.00
+init: crossspecies_ssl
+seed: 1
+labeled_fraction: 0.5
+hyperparameters:
+  source: drosophila+zebrafish
+  lr: 1e-3
+  dstc: '32'
+  seq: '5'
+  bs: '4'
+  ema: '0.996'
+  pre_ep: '9'
+  ft_ep: '40'
+tag: H2 cross-species SSL 50%

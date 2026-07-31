@@ -1,0 +1,14 @@
+uid: '023'
+date: '2026-07-13'
+hypothesis: baseline
+model: cellpose
+dataset: neurofinder.00.00
+init: zero_shot
+seed: null
+labeled_fraction: null
+hyperparameters:
+  eval: field-level
+  res: '512'
+  iou: '0.5'
+  diameter: auto
+tag: Cellpose zero-shot baseline (105/330 instances)

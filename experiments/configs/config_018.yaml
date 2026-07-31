@@ -1,0 +1,11 @@
+uid: 018
+date: '2026-07-13'
+hypothesis: H3
+model: jepa_resnet5
+dataset: neurofinder.00.00
+init: crossspecies_ssl
+seed: 1
+labeled_fraction: 1.0
+hyperparameters:
+  metric: within/between-cosine
+tag: H3 cross-species SSL
