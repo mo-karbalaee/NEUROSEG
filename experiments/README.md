@@ -2,7 +2,7 @@
 
 `experiments.csv` is the experimental log: one row per run, keyed by a unique `uid`.
 
-Columns: `uid, date, hypothesis, model, dataset, init, labeled_fraction, seed, hyperparameters, dice, miou, detection_f1, gap, tag`.
+Columns: `uid, timestamp, hypothesis, model, dataset, init, labeled_fraction, seed, hyperparameters, dice, miou, detection_f1, gap, tag`. `timestamp` is the run's ISO-8601 datetime from its log (or file mtime for the notebook-based runs).
 
 Each row's full configuration is `configs/config_<uid>.yaml`, linked by `uid`. The config files are generated from the CSV:
 

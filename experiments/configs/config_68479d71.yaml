@@ -1,5 +1,5 @@
 uid: 68479d71
-date: '2026-07-22'
+timestamp: '2026-07-22T23:09:32'
 hypothesis: baseline
 model: cellpose
 dataset: neurofinder.00.00

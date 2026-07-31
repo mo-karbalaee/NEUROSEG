@@ -1,5 +1,5 @@
 uid: 3df5db80
-date: '2026-07-13'
+timestamp: '2026-07-13T11:05:54'
 hypothesis: H2
 model: jepa_resnet5
 dataset: drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target)

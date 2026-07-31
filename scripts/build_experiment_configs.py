@@ -21,7 +21,7 @@ def _row_to_config(row: dict) -> dict:
     """Build the per-run config dict for one experiments.csv row, linked by its UID."""
     cfg = {
         "uid": row["uid"],
-        "date": row["date"],
+        "timestamp": row["timestamp"],
         "hypothesis": row["hypothesis"],
         "model": row["model"],
         "dataset": row["dataset"],
