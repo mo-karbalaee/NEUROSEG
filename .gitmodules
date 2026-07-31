@@ -1,0 +1,6 @@
+[submodule "report"]
+	path = report
+	url = https://github.com/mo-karbalaee/BIMAP-report.git
+[submodule "presentation"]
+	path = presentation
+	url = https://github.com/mo-karbalaee/BIMAP-presentation.git
