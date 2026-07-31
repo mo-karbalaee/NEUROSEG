@@ -7,8 +7,15 @@ NEUROSEG uses a JEPA-style self-supervised architecture to segment neuronal soma
 
 ---
 
+## 📋 Experiment Log
+
+The complete log of every experiment is **[`experiments/experiments.csv`](experiments/experiments.csv)** — one UID-keyed row per run (timestamp, hypothesis, model, dataset, init, labeled fraction, seed, hyperparameters, metrics, tag), with a matching per-run config at **[`experiments/configs/config_<uid>.yaml`](experiments/configs)**. It records the full arc of the project (prototype → iterations → the reframed hypotheses → final runs → baselines). See **[`experiments/`](experiments/)** for the format.
+
+---
+
 ## Table of Contents
 
+- [Experiment Log](#-experiment-log)
 - [Reproduce in 20 Minutes](#reproduce-in-20-minutes)
 - [Overview](#overview)
 - [Requirements](#requirements)
