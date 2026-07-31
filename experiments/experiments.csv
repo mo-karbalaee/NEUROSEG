@@ -32,6 +32,6 @@ d43ceafe,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-
 4b2b155f,2026-07-13,H3,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,metric=within/between-cosine,,,,0.028,H3 cross-species SSL
 036dbd87,2026-07-13,H3,jepa_resnet5,neurofinder.00.00,supervised,1.00,1,metric=within/between-cosine;cohens_d=1.45,,,,0.208,H3 supervised (upper reference)
 db6dc0fc,2026-07-13,H3,jepa_resnet5,neurofinder.00.00,untrained,1.00,1,metric=within/between-cosine;cohens_d=0.16,,,,0.007,H3 untrained floor
-9e5a91fa,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,eval=field-level;res=512;iou=0.5,0.700,,0.264,,Field-level SSL f100 (155/330 instances)
-d3ba53d6,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,eval=field-level;res=512;iou=0.5,0.711,,0.279,,Field-level from-scratch f100 (157/330 instances)
-68479d71,2026-07-13,baseline,cellpose,neurofinder.00.00,zero_shot,,,eval=field-level;res=512;iou=0.5;diameter=auto,0.279,,0.170,,Cellpose zero-shot baseline (105/330 instances)
+9e5a91fa,2026-07-22,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,eval=field-level;res=512;iou=0.5,0.700,,0.264,,Field-level SSL f100 (155/330 instances)
+d3ba53d6,2026-07-22,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,eval=field-level;res=512;iou=0.5,0.711,,0.279,,Field-level from-scratch f100 (157/330 instances)
+68479d71,2026-07-22,baseline,cellpose,neurofinder.00.00,zero_shot,,,eval=field-level;res=512;iou=0.5;diameter=auto,0.279,,0.170,,Cellpose zero-shot baseline (105/330 instances)
