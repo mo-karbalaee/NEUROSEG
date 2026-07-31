@@ -2,7 +2,7 @@ uid: ff2534ac
 date: '2026-07-12'
 hypothesis: H3
 model: jepa_resnet5
-dataset: neurofinder.00.00
+dataset: drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target)
 init: crossspecies_ssl
 seed: 1
 labeled_fraction: 1.0

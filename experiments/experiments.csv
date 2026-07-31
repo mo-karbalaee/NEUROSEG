@@ -9,7 +9,7 @@ cf423dec,2026-07-12,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-
 06b295c9,2026-07-12,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.762,0.780,,,H1 v8 (pre-fix) scratch 75%
 0dafef04,2026-07-12,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.781,0.792,,,H1 v8 (pre-fix) scratch 100%
 203c379f,2026-07-12,H3,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,metric=within/between-cosine,,,,0.009,H3 interim same-species SSL
-ff2534ac,2026-07-12,H3,jepa_resnet5,neurofinder.00.00,crossspecies_ssl,1.00,1,metric=within/between-cosine,,,,0.028,H3 interim cross-species SSL
+ff2534ac,2026-07-12,H3,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,metric=within/between-cosine,,,,0.028,H3 interim cross-species SSL
 693a6c09,2026-07-12,H3,jepa_resnet5,neurofinder.00.00,supervised,1.00,1,metric=within/between-cosine,,,,0.243,H3 interim supervised
 4c013f13,2026-07-12,H3,jepa_resnet5,neurofinder.00.00,untrained,1.00,1,metric=within/between-cosine,,,,0.005,H3 interim untrained floor
 762b187f,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.626,0.675,,,H1 SSL fine-tune 10%
@@ -20,16 +20,16 @@ e67ce2dd,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-
 2dc65f41,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.860,0.868,,,H1 from-scratch 50%
 fb299e35,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.887,0.895,,,H1 from-scratch 75%
 ee744e16,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.878,0.885,,,H1 from-scratch 100%
-f03e1ea4,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,crossspecies_ssl,0.10,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.639,0.678,,,H2 cross-species SSL 10%
-3df5db80,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,crossspecies_ssl,0.50,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.818,0.826,,,H2 cross-species SSL 50%
-9aa33fb2,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,crossspecies_ssl,0.75,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.858,0.863,,,H2 cross-species SSL 75%
-693f8252,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,crossspecies_ssl,1.00,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.884,0.892,,,H2 cross-species SSL 100%
+f03e1ea4,2026-07-13,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.10,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.639,0.678,,,H2 cross-species SSL 10%
+3df5db80,2026-07-13,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.50,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.818,0.826,,,H2 cross-species SSL 50%
+9aa33fb2,2026-07-13,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,0.75,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.858,0.863,,,H2 cross-species SSL 75%
+693f8252,2026-07-13,H2,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,source=drosophila+zebrafish;lr=1e-3;dstc=32;seq=5;bs=4;ema=0.996;pre_ep=9;ft_ep=40,0.884,0.892,,,H2 cross-species SSL 100%
 251f4703,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.10,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.698,0.727,,,H2 from-scratch 10%
 476f14e1,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.50,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.849,0.858,,,H2 from-scratch 50%
 bbfda74a,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,from_scratch,0.75,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.886,0.894,,,H2 from-scratch 75%
 d43ceafe,2026-07-13,H2,jepa_resnet5,neurofinder.00.00,from_scratch,1.00,1,lr=1e-3;dstc=32;seq=5;bs=4;ft_ep=40,0.873,0.881,,,H2 from-scratch 100%
 9499705c,2026-07-13,H3,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,metric=within/between-cosine;cohens_d=0.66,,,,0.057,H3 same-species SSL
-4b2b155f,2026-07-13,H3,jepa_resnet5,neurofinder.00.00,crossspecies_ssl,1.00,1,metric=within/between-cosine,,,,0.028,H3 cross-species SSL
+4b2b155f,2026-07-13,H3,jepa_resnet5,drosophila+zebrafish (pretrain) -> neurofinder.00.00 (target),crossspecies_ssl,1.00,1,metric=within/between-cosine,,,,0.028,H3 cross-species SSL
 036dbd87,2026-07-13,H3,jepa_resnet5,neurofinder.00.00,supervised,1.00,1,metric=within/between-cosine;cohens_d=1.45,,,,0.208,H3 supervised (upper reference)
 db6dc0fc,2026-07-13,H3,jepa_resnet5,neurofinder.00.00,untrained,1.00,1,metric=within/between-cosine;cohens_d=0.16,,,,0.007,H3 untrained floor
 9e5a91fa,2026-07-13,H1,jepa_resnet5,neurofinder.00.00,ssl_pretrained,1.00,1,eval=field-level;res=512;iou=0.5,0.700,,0.264,,Field-level SSL f100 (155/330 instances)
